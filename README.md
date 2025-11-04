@@ -1,12 +1,12 @@
 # Pura Admin Dashboard
 
-Pura Admin Dashboard is an admin panel built with **Next.js 14**, **Tailwind CSS**, **shadcn/ui**, and **TypeScript**. It is designed to manage the website content of Pura Agung Kertajaya with a clean UI, secure authentication, and smooth animations.
+Pura Admin Dashboard is an admin panel built with **Next.js 16**, **Tailwind CSS**, **shadcn/ui**, and **TypeScript**. It is designed to manage the website content of Pura Agung Kertajaya with a clean UI, secure authentication, and smooth animations.
 
 ---
 
 ## 🚀 Tech Stack
 
-- **Next.js 14 (App Router)**
+- **Next.js 16 (App Router)**
 - **React + TypeScript**
 - **Tailwind CSS**
 - **shadcn/ui components**
@@ -54,7 +54,7 @@ npm install -g pnpm
 
 1.  **Clone this repository**:
     ```bash
-    git clone [https://github.com/JonathanGunawan30/pura-agung-kertajaya-cms-frontend.git](https://github.com/JonathanGunawan30/pura-agung-kertajaya-cms-frontend.git)
+    git clone https://github.com/JonathanGunawan30/pura-agung-kertajaya-cms-frontend.git
     ```
 
 2.  **Install all project dependencies**:
@@ -84,7 +84,7 @@ This project requires a **Google reCAPTCHA v3 Site Key**.
     ```
 
 2.  Open your browser and visit:
-    [http://localhost:3000](http://localhost:3000)
+    http://localhost:3000
 
 ---
 

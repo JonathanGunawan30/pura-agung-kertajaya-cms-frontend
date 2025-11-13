@@ -26,3 +26,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ignore jetbrains IDE settings
+.idea/
+
+# ignore visual studio code settings
+.vscode/

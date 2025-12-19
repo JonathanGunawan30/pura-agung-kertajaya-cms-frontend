@@ -1,16 +1,24 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { heroSlidesApi, storageApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Upload } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { CardContent } from "@/components/ui/card"
 import { validateFile } from "@/lib/validation"
 import { showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
 
+import {
+    ArrowLeft,
+    Save,
+    LayoutList,
+    Edit2 as EditIcon,
+    Image as ImageIcon,
+    UploadCloud
+} from "lucide-react"
 interface HeroSlideFormProps {
     slideId?: string
     onClose: () => void
@@ -53,7 +61,9 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
                     setOldImageUrl(data.image_url)
                     setPreviewUrl(data.image_url)
                 } catch (err) {
-                    setError("Failed to load slide")
+                    const msg = "Gagal memuat data slide."
+                    setError(msg)
+                    await showErrorAlert("Error", msg)
                 }
             }
 
@@ -62,8 +72,9 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
     }, [slideId, isEditMode])
 
     const validateForm = (): boolean => {
+        setError("")
         if (!isEditMode && !selectedFile) {
-            setError("Image is required for new slides")
+            setError("Foto slide wajib diupload untuk slide baru.")
             return false
         }
         return true
@@ -81,6 +92,7 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
 
         setSelectedFile(file)
         setPreviewUrl(URL.createObjectURL(file))
+        setError("")
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -112,15 +124,15 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
 
             if (isEditMode) {
                 await heroSlidesApi.update(slideId!, payload)
-                await showSuccessAlert("Success", "Hero slide updated successfully")
+                await showSuccessAlert("Berhasil Diupdate!", "Slide berhasil diperbarui.")
             } else {
                 await heroSlidesApi.create(payload)
-                await showSuccessAlert("Success", "Hero slide created successfully")
+                await showSuccessAlert("Berhasil Ditambah!", "Slide baru berhasil disimpan.")
             }
 
             onClose()
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : "Failed to save slide"
+            const errorMsg = err instanceof Error ? err.message : "Gagal menyimpan slide."
             setError(errorMsg)
             await showErrorAlert("Error", errorMsg)
         } finally {
@@ -129,102 +141,168 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
     }
 
     return (
-        <div className="space-y-4">
-            <Button variant="outline" onClick={onClose} className="border-border/50 gap-2 bg-transparent">
-                <ArrowLeft className="w-4 h-4" />
-                Back
-            </Button>
+        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
 
-            <Card className="border-border/50">
-                <CardHeader>
-                    <CardTitle>{isEditMode ? "Edit Hero Slide" : "Add New Hero Slide"}</CardTitle>
-                </CardHeader>
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="ghost"
+                    onClick={onClose}
+                    className="group pl-0 hover:bg-transparent text-muted-foreground hover:text-orange-600 transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
+                    Kembali ke Daftar
+                </Button>
+            </div>
 
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+
+                <div className="bg-muted/30 border-b p-6">
+                    <div className="flex items-start gap-4">
+                        <div className={`p-2.5 rounded-lg border shadow-sm ${isEditMode ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-orange-50 text-orange-600 border-orange-100"}`}>
+                            {isEditMode ? <EditIcon className="w-5 h-5"/> : <ImageIcon className="w-5 h-5"/>}
+                        </div>
+
+                        <div>
+                            <h2 className="text-xl font-bold text-foreground leading-tight">
+                                {isEditMode ? "Edit Hero Slide" : "Tambah Hero Slide"}
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Upload gambar banner utama untuk halaman beranda.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <CardContent className="pt-8 px-6 md:px-8 bg-card">
+                    <form onSubmit={handleSubmit} className="space-y-8">
                         {error && (
-                            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                            <div className="p-4 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium animate-in fade-in slide-in-from-top-2">
                                 {error}
                             </div>
                         )}
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Hero Image (Max 2MB) *</label>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                            <label className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:bg-muted/50 transition">
-                                <div className="flex flex-col items-center">
-                                    <Upload className="w-6 h-6 mb-2 text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground">
-                                        Click to choose image
-                                    </span>
+                            <div className="lg:col-span-2 space-y-4">
+                                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                                    <ImageIcon className="w-4 h-4"/> Foto Slide <span className="text-red-500">*</span>
+                                </h3>
+
+                                <div className="rounded-xl border-2 border-dashed border-border/60 bg-muted/5 p-6 transition-colors hover:bg-muted/10 hover:border-orange-500/50">
+                                    {previewUrl ? (
+                                        <div className="relative group">
+                                            <div className="rounded-lg overflow-hidden bg-black/5 border shadow-sm relative min-h-[200px] max-h-[400px] flex items-center justify-center">
+                                                <img
+                                                    src={previewUrl}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-contain max-h-[400px]"
+                                                />
+                                            </div>
+
+                                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <label
+                                                    htmlFor="change-image"
+                                                    className="cursor-pointer bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md border hover:text-orange-600 transition-colors"
+                                                    title="Ganti Foto"
+                                                >
+                                                    <EditIcon className="w-4 h-4" />
+                                                    <input
+                                                        id="change-image"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleImageSelect}
+                                                        className="hidden"
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="flex flex-col items-center justify-center h-64 cursor-pointer">
+                                            <div className="bg-orange-50 p-4 rounded-full mb-3 text-orange-600">
+                                                <UploadCloud className="w-10 h-10" />
+                                            </div>
+                                            <p className="text-sm font-medium text-foreground">Klik untuk upload foto banner</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 2MB)</p>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageSelect}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    )}
                                 </div>
+                            </div>
 
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageSelect}
-                                    disabled={loading}
-                                    className="hidden"
-                                />
-                            </label>
+                            <div className="space-y-6">
+                                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                                    <LayoutList className="w-4 h-4"/> Pengaturan
+                                </h3>
 
-                            {previewUrl && (
-                                <div className="mt-4 rounded-lg overflow-hidden h-48 bg-muted">
-                                    <img
-                                        src={previewUrl}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
-                                    />
+                                <div className="space-y-5 p-5 bg-muted/20 rounded-lg border">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="order" className="flex items-center gap-2">
+                                            <LayoutList className="w-3.5 h-3.5 text-muted-foreground" /> Urutan Tampilan
+                                        </Label>
+                                        <Input
+                                            id="order"
+                                            type="number"
+                                            min={1}
+                                            value={formData.order_index}
+                                            onChange={(e) => setFormData({ ...formData, order_index: Number(e.target.value) || 1 })}
+                                            className="bg-background"
+                                            required
+                                        />
+                                        <p className="text-[11px] text-muted-foreground leading-tight pt-1">
+                                            Menentukan urutan slide saat ditampilkan. <br/>
+                                            <span className="text-orange-600 font-medium">Angka 1 = Slide Pertama.</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="h-px bg-border/60 my-2"></div>
+
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="is_active" className="cursor-pointer">Status Publikasi</Label>
+                                            <Switch
+                                                id="is_active"
+                                                checked={formData.is_active}
+                                                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                                                className="data-[state=checked]:bg-emerald-600"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            {formData.is_active
+                                                ? "Slide ini TAMPIL di beranda."
+                                                : "Slide ini DISEMBUNYIKAN."}
+                                        </p>
+                                    </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Order Index</label>
-                            <Input
-                                type="number"
-                                value={formData.order_index}
-                                min={1}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, order_index: Number(e.target.value) || 1 })
-                                }
-                                required
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={formData.is_active}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, is_active: e.target.checked })
-                                }
-                                className="rounded border-border/50"
-                            />
-                            <label className="text-sm font-medium text-foreground">Active</label>
-                        </div>
-
-                        <div className="flex gap-2 pt-4">
-                            <Button
-                                type="submit"
-                                disabled={loading}
-                                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                            >
-                                {loading ? "Saving..." : "Save Slide"}
-                            </Button>
-
+                        <div className="flex items-center justify-end gap-3 pt-6 pb-6 mt-8 border-t">
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={onClose}
-                                className="border-border/50 bg-transparent"
+                                className="h-10 px-6 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors"
                             >
-                                Cancel
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="h-10 px-8 bg-orange-600 hover:bg-orange-700 text-white shadow-md transition-all"
+                            >
+                                {loading ? "Menyimpan..." : (
+                                    <><Save className="w-4 h-4 mr-2" /> Simpan Perubahan</>
+                                )}
                             </Button>
                         </div>
                     </form>
                 </CardContent>
-            </Card>
+            </div>
         </div>
     )
 }

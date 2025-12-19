@@ -8,12 +8,25 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Upload, Trash2, Plus } from "lucide-react"
+import { CardContent } from "@/components/ui/card"
 import { validateFile } from "@/lib/validation"
 import { showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
 import type { AboutValue } from "@/lib/types"
 
+import {
+    ArrowLeft,
+    Save,
+    LayoutList,
+    Type,
+    Edit2 as EditIcon,
+    Image as ImageIcon,
+    UploadCloud,
+    Info,
+    ListChecks,
+    Plus,
+    Trash2,
+    GripVertical
+} from "lucide-react"
 type AboutValueFormData = Omit<AboutValue, "id" | "about_id" | "created_at" | "updated_at">
 
 interface AboutSectionFormData {
@@ -49,10 +62,9 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
 
     useEffect(() => {
         if (isEditMode) {
-            setLoading(true)
-            aboutApi
-                .getById(sectionId)
-                .then((data) => {
+            const fetchSection = async () => {
+                try {
+                    const data = await aboutApi.getById(sectionId)
                     setFormData({
                         title: data.title,
                         description: data.description,
@@ -66,9 +78,13 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
                     })
                     setOldImageUrl(data.image_url)
                     setPreviewUrl(data.image_url)
-                })
-                .catch((err) => setError(err.message))
-                .finally(() => setLoading(false))
+                } catch (err) {
+                    const msg = "Gagal memuat data informasi."
+                    setError(msg)
+                    await showErrorAlert("Error", msg)
+                }
+            }
+            fetchSection()
         }
     }, [sectionId, isEditMode])
 
@@ -84,6 +100,7 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
 
         setSelectedFile(file)
         setPreviewUrl(URL.createObjectURL(file))
+        setError("")
     }
 
     const handleValueChange = (
@@ -116,6 +133,17 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError("")
+
+        if (!formData.title.trim()) {
+            setError("Judul wajib diisi.")
+            return
+        }
+
+        if (!isEditMode && !selectedFile) {
+            setError("Foto wajib diupload untuk data baru.")
+            return
+        }
+
         setLoading(true)
 
         try {
@@ -138,15 +166,15 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
 
             if (isEditMode) {
                 await aboutApi.update(sectionId!, payload)
-                await showSuccessAlert("Success", "About section updated successfully")
+                await showSuccessAlert("Berhasil Diupdate!", "Informasi berhasil diperbarui.")
             } else {
                 await aboutApi.create(payload)
-                await showSuccessAlert("Success", "About section created successfully")
+                await showSuccessAlert("Berhasil Ditambah!", "Informasi baru berhasil disimpan.")
             }
 
             onClose()
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Failed to save section"
+            const message = err instanceof Error ? err.message : "Gagal menyimpan data."
             setError(message)
             await showErrorAlert("Error", message)
         } finally {
@@ -155,158 +183,261 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
     }
 
     return (
-        <div className="space-y-4">
-            <Button variant="outline" onClick={onClose} className="border-border/50 gap-2 bg-transparent">
-                <ArrowLeft className="w-4 h-4" />
-                Back
-            </Button>
+        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
 
-            <form onSubmit={handleSubmit}>
-                <Card className="border-border/50">
-                    <CardHeader>
-                        <CardTitle>{isEditMode ? "Edit About Section" : "Add New About Section"}</CardTitle>
-                        <CardDescription>This section includes the main description and its values.</CardDescription>
-                    </CardHeader>
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="ghost"
+                    onClick={onClose}
+                    className="group pl-0 hover:bg-transparent text-muted-foreground hover:text-orange-600 transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
+                    Kembali ke Daftar
+                </Button>
+            </div>
 
-                    <CardContent className="space-y-6">
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+
+                <div className="bg-muted/30 border-b p-6">
+                    <div className="flex items-start gap-4">
+                        <div className={`p-2.5 rounded-lg border shadow-sm ${isEditMode ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-orange-50 text-orange-600 border-orange-100"}`}>
+                            {isEditMode ? <EditIcon className="w-5 h-5"/> : <Info className="w-5 h-5"/>}
+                        </div>
+
+                        <div>
+                            <h2 className="text-xl font-bold text-foreground leading-tight">
+                                {isEditMode ? "Edit Informasi" : "Tambah Informasi Baru"}
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Kelola sejarah serta nilai-nilai yang ada di pura.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <CardContent className="pt-8 px-6 md:px-8 bg-card">
+                    <form onSubmit={handleSubmit} className="space-y-8">
                         {error && (
-                            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                            <div className="p-4 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium">
                                 {error}
                             </div>
                         )}
 
-                        <div className="space-y-2">
-                            <Label>Title</Label>
-                            <Input
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                required
-                            />
-                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                        <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                rows={5}
-                                className="bg-background border-border/50"
-                                required
-                            />
-                        </div>
+                            <div className="lg:col-span-2 space-y-8">
 
-                        <div className="space-y-2">
-                            <Label>Image (Max 2MB)</Label>
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                                        <ImageIcon className="w-4 h-4"/> Foto Sampul <span className="text-red-500">*</span>
+                                    </h3>
 
-                            <label className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:bg-muted/50 transition">
-                                <div className="flex flex-col items-center">
-                                    <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                                    <span className="text-sm text-muted-foreground">Click to choose image</span>
+                                    <div className="rounded-xl border-2 border-dashed border-border/60 bg-muted/5 p-6 transition-colors hover:bg-muted/10 hover:border-orange-500/50">
+                                        {previewUrl ? (
+                                            <div className="relative group">
+                                                <div className="rounded-lg overflow-hidden bg-black/5 border shadow-sm relative min-h-[200px] max-h-[400px] flex items-center justify-center">
+                                                    <img
+                                                        src={previewUrl}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-contain max-h-[400px]"
+                                                    />
+                                                </div>
+                                                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <label
+                                                        htmlFor="change-image"
+                                                        className="cursor-pointer bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md border hover:text-orange-600 transition-colors"
+                                                        title="Ganti Foto"
+                                                    >
+                                                        <EditIcon className="w-4 h-4" />
+                                                        <input
+                                                            id="change-image"
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleImageSelect}
+                                                            className="hidden"
+                                                        />
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center h-48 cursor-pointer">
+                                                <div className="bg-orange-50 p-4 rounded-full mb-3 text-orange-600">
+                                                    <UploadCloud className="w-8 h-8" />
+                                                </div>
+                                                <p className="text-sm font-medium text-foreground">Klik untuk upload foto</p>
+                                                <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 2MB)</p>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageSelect}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
                                 </div>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageSelect}
-                                    disabled={loading}
-                                    className="hidden"
-                                />
-                            </label>
 
-                            {previewUrl && (
-                                <div className="mt-4 rounded-lg overflow-hidden h-48 bg-muted">
-                                    <img src={previewUrl} className="w-full h-full object-cover" />
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                                        <Type className="w-4 h-4"/> Detail Konten
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="title">Judul Bagian <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="title"
+                                                value={formData.title}
+                                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                                placeholder="Contoh: Tentang Pura Agung Kertajaya"
+                                                className="bg-background focus-visible:ring-orange-500"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="description">Deskripsi Lengkap</Label>
+                                            <Textarea
+                                                id="description"
+                                                value={formData.description}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder="Tuliskan sejarah atau deskripsi lengkap pura disini..."
+                                                className="bg-background min-h-[150px] resize-y focus-visible:ring-orange-500 leading-relaxed"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                checked={formData.is_active}
-                                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                            />
-                            <Label className="text-sm font-medium">Active</Label>
-                        </div>
-                    </CardContent>
-                </Card>
+                                <div className="space-y-5 pt-4">
+                                    <div className="flex items-center justify-between border-b pb-2">
+                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                            <ListChecks className="w-4 h-4"/> Nilai & Prinsip
+                                        </h3>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleAddValue}
+                                            className="h-8 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1.5" /> Tambah Poin
+                                        </Button>
+                                    </div>
 
-                <Card className="border-border/50 mt-6">
-                    <CardHeader>
-                        <div className="flex justify-between">
-                            <div>
-                                <CardTitle>Values</CardTitle>
-                                <CardDescription>Add related values such as Visi, Misi, etc.</CardDescription>
+                                    {formData.values.length === 0 ? (
+                                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-xl bg-muted/5">
+                                            <p className="text-sm text-muted-foreground">Belum ada poin nilai/prinsip ditambahkan.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4">
+                                            {formData.values.map((value, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="group relative flex flex-col sm:flex-row gap-4 p-5 rounded-xl border bg-card hover:border-orange-200 transition-colors shadow-sm"
+                                                >
+                                                    <div className="hidden sm:flex flex-col items-center justify-center text-muted-foreground/30 px-1">
+                                                        <GripVertical className="w-5 h-5" />
+                                                    </div>
+
+                                                    <div className="flex-1 space-y-3">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                                            <div className="sm:col-span-3 space-y-1.5">
+                                                                <Label className="text-xs text-muted-foreground">Judul Poin</Label>
+                                                                <Input
+                                                                    value={value.title}
+                                                                    onChange={(e) => handleValueChange(index, "title", e.target.value)}
+                                                                    placeholder="Judul..."
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-xs text-muted-foreground">Urutan</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={value.order_index}
+                                                                    onChange={(e) => handleValueChange(index, "order_index", Number(e.target.value))}
+                                                                    className="h-9"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs text-muted-foreground">Isi / Keterangan</Label>
+                                                            <Textarea
+                                                                value={value.value}
+                                                                onChange={(e) => handleValueChange(index, "value", e.target.value)}
+                                                                placeholder="Jelaskan poin ini..."
+                                                                className="min-h-[60px] resize-y text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="absolute top-2 right-2 sm:static sm:flex sm:items-start">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleRemoveValue(index)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            <Button type="button" variant="outline" onClick={handleAddValue}>
-                                <Plus className="w-4 h-4" /> Add Value
+                            <div className="space-y-6">
+                                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                                    <LayoutList className="w-4 h-4"/> Pengaturan
+                                </h3>
+
+                                <div className="space-y-5 p-5 bg-muted/20 rounded-lg border">
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="is_active" className="cursor-pointer">Status Publikasi</Label>
+                                            <Switch
+                                                id="is_active"
+                                                checked={formData.is_active}
+                                                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                                                className="data-[state=checked]:bg-emerald-600"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            {formData.is_active
+                                                ? "Bagian ini TAMPIL di website."
+                                                : "Bagian ini DISEMBUNYIKAN (Draft)."}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-6 pb-6 mt-8 border-t">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onClose}
+                                className="h-10 px-6 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="h-10 px-8 bg-orange-600 hover:bg-orange-700 text-white shadow-md transition-all"
+                            >
+                                {loading ? "Menyimpan..." : (
+                                    <><Save className="w-4 h-4 mr-2" /> Simpan Perubahan</>
+                                )}
                             </Button>
                         </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                        {formData.values.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">No values added yet.</p>
-                        )}
-
-                        {formData.values.map((value, index) => (
-                            <div key={index} className="p-4 rounded-lg border border-border/50 space-y-3 bg-muted/30">
-                                <div className="flex justify-between items-center">
-                                    <Label>Value #{index + 1}</Label>
-
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleRemoveValue(index)}
-                                        className="text-destructive hover:text-destructive"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Title</Label>
-                                    <Input
-                                        value={value.title}
-                                        onChange={(e) => handleValueChange(index, "title", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Value</Label>
-                                    <Textarea
-                                        value={value.value}
-                                        onChange={(e) => handleValueChange(index, "value", e.target.value)}
-                                        rows={3}
-                                        className="bg-background border-border/50"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Order</Label>
-                                    <Input
-                                        type="number"
-                                        value={value.order_index}
-                                        onChange={(e) =>
-                                            handleValueChange(index, "order_index", Number(e.target.value) || 1)
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-
-                <div className="flex justify-end gap-2 pt-6">
-                    <Button type="button" variant="outline" onClick={onClose}>
-                        Cancel
-                    </Button>
-
-                    <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90">
-                        {loading ? "Saving..." : isEditMode ? "Save Changes" : "Create Section"}
-                    </Button>
-                </div>
-            </form>
+                    </form>
+                </CardContent>
+            </div>
         </div>
     )
 }

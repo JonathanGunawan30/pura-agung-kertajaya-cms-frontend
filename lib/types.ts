@@ -1,5 +1,7 @@
 // Type definitions for API responses
 
+export type EntityType = 'pura' | 'yayasan' | 'pasraman';
+
 export interface User {
   id: string
   name: string
@@ -22,6 +24,7 @@ export interface Testimonial {
 
 export interface HeroSlide {
   id: string
+  entity_type: EntityType
   image_url: string
   order_index: number
   is_active: boolean
@@ -31,6 +34,7 @@ export interface HeroSlide {
 
 export interface Gallery {
   id: string
+  entity_type: EntityType
   title: string
   description: string
   image_url: string
@@ -42,6 +46,7 @@ export interface Gallery {
 
 export interface ContactInfo {
   id: string
+  entity_type: EntityType
   address: string
   phone: string
   email: string
@@ -53,6 +58,7 @@ export interface ContactInfo {
 
 export interface Activity {
   id: string
+  entity_type: EntityType
   title: string
   description: string
   time_info: string
@@ -65,6 +71,7 @@ export interface Activity {
 
 export interface SiteIdentity {
   id: string
+  entity_type: EntityType
   site_name: string
   logo_url: string
   tagline: string
@@ -72,8 +79,8 @@ export interface SiteIdentity {
   primary_button_link: string
   secondary_button_text: string
   secondary_button_link: string
-  created_at: number
-  updated_at: number
+  created_at: string
+  updated_at: string
 }
 
 export interface AboutValue {
@@ -88,6 +95,7 @@ export interface AboutValue {
 
 export interface AboutSection {
   id: string
+  entity_type: EntityType
   title: string
   description: string
   image_url: string
@@ -99,6 +107,7 @@ export interface AboutSection {
 
 export interface OrganizationMember {
   id: string
+  entity_type: EntityType
   name: string
   position: string
   position_order: number
@@ -112,6 +121,7 @@ export interface OrganizationMember {
 
 export interface Facility {
   id: string
+  entity_type: EntityType
   name: string
   description: string
   image_url: string
@@ -119,4 +129,31 @@ export interface Facility {
   is_active: boolean
   created_at: number
   updated_at: number
+}
+
+export interface Remark {
+  id: string
+  entity_type: EntityType
+  name: string
+  position: string
+  content: string
+  image_url: string | null
+  order_index: number
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface OrganizationDetail {
+  id: string
+  entity_type: EntityType
+  vision: string | null
+  mission: string | null
+  rules: string | null
+  work_program: string | null
+  vision_mission_image_url: string | null
+  work_program_image_url: string | null
+  rules_image_url: string | null
+  created_at: string
+  updated_at: string
 }

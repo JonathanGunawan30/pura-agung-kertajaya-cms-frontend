@@ -1,7 +1,9 @@
 "use client"
 
 import {useState, useEffect} from "react"
-import type {HeroSlide} from "@/lib/types"
+import {useSearchParams, useRouter} from "next/navigation"
+import Image from "next/image"
+import type {HeroSlide, EntityType} from "@/lib/types"
 import {heroSlidesApi, storageApi} from "@/lib/api-client"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
@@ -20,6 +22,7 @@ import {
     RotateCcw,
     ExternalLink,
     X,
+    Building2,
 } from "lucide-react"
 import {HeroSlideForm} from "./hero-slide-form"
 import {showSuccessAlert, showErrorAlert, showConfirmAlert} from "@/lib/sweet-alert"
@@ -36,8 +39,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function HeroSlidesList() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    const queryType = searchParams.get("type") as EntityType | null
+    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+        ? queryType
+        : "pura"
+
+    const [entityType, setEntityType] = useState<EntityType>(defaultType)
     const [slides, setSlides] = useState<HeroSlide[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -51,10 +64,16 @@ export function HeroSlidesList() {
 
     const limit = 6
 
+    useEffect(() => {
+        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+            setEntityType(queryType)
+        }
+    }, [queryType])
+
     const fetchSlides = async () => {
         try {
             setLoading(true)
-            const data = await heroSlidesApi.getAll()
+            const data = await heroSlidesApi.getAll(entityType)
             setSlides(data || [])
         } catch (error) {
             console.error("Failed to fetch hero slides:", error)
@@ -65,11 +84,16 @@ export function HeroSlidesList() {
 
     useEffect(() => {
         fetchSlides()
-    }, [])
+    }, [entityType])
 
     useEffect(() => {
         setPage(1)
-    }, [searchQuery])
+    }, [searchQuery, entityType])
+
+    const handleTabChange = (type: EntityType) => {
+        setEntityType(type)
+        router.push(`?type=${type}`, { scroll: false })
+    }
 
     const handleDelete = async (id: string, imageUrl: string) => {
         const result = await showConfirmAlert("Hapus Slide", "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan.")
@@ -107,11 +131,32 @@ export function HeroSlidesList() {
     const totalPages = Math.ceil(filteredSlides.length / limit)
 
     if (showForm || editingId) {
-        return <HeroSlideForm slideId={editingId || undefined} onClose={handleFormClose}/>
+        return <HeroSlideForm slideId={editingId || undefined} entityType={entityType} onClose={handleFormClose}/>
     }
 
     return (
         <div className="space-y-6">
+
+            {!queryType && (
+                <div className="flex flex-wrap gap-2">
+                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => handleTabChange(type)}
+                            className={cn(
+                                "capitalize transition-all",
+                                entityType === type
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                    : "hover:text-orange-600 hover:border-orange-200"
+                            )}
+                        >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {type}
+                        </Button>
+                    ))}
+                </div>
+            )}
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <div
@@ -119,11 +164,11 @@ export function HeroSlidesList() {
                     <div className="relative w-full sm:w-96">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                         <Input
-                            placeholder="Cari urutan slide (angka)..."
+                            placeholder={`Cari urutan slide ${entityType} (angka)...`}
                             className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            type="number" // Opsional: Memaksa keyboard angka di mobile
+                            type="number"
                             min={1}
                         />
                     </div>
@@ -164,12 +209,12 @@ export function HeroSlidesList() {
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                     <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                        Tidak ada slide dengan urutan "{searchQuery}".
+                        Tidak ada slide untuk <strong>{entityType}</strong> dengan urutan "{searchQuery}".
                     </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginated.map((slide) => (
+                    {paginated.map((slide, index) => (
                         <div
                             key={slide.id}
                             className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
@@ -185,10 +230,13 @@ export function HeroSlidesList() {
                             >
                                 {slide.image_url ? (
                                     <>
-                                        <img
+                                        <Image
                                             src={slide.image_url}
                                             alt="Hero Slide"
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                            priority={index < 4}
                                         />
 
                                         <div
@@ -377,7 +425,7 @@ export function HeroSlidesList() {
                                 e.stopPropagation()
                                 setZoom(zoom === 1 ? 2 : 1)
                             }}
-                            onClick={(e) => e.stopPropagation()} // Prevent close on image click
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 
@@ -403,10 +451,10 @@ function StatusBadge({isActive}: { isActive: boolean }) {
                         className={`
                               flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border cursor-help select-none
                               ${
-                                isActive
+                            isActive
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
                                 : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"
-                                }
+                        }
                         `}
                     >
                         {isActive ? <Eye className="w-3 h-3"/> : <EyeOff className="w-3 h-3"/>}

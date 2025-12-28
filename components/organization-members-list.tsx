@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import type { OrganizationMember } from "@/lib/types"
+import { useSearchParams, useRouter } from "next/navigation"
+import type { OrganizationMember, EntityType } from "@/lib/types"
 import { organizationMembersApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,7 @@ import {
     ListOrdered,
     Filter,
     XCircle,
+    Building2,
 } from "lucide-react"
 import { OrganizationMemberForm } from "./organization-member-form"
 import { showSuccessAlert, showErrorAlert, showConfirmAlert } from "@/lib/sweet-alert"
@@ -39,8 +41,18 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 export function OrganizationMembersList() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    const queryType = searchParams.get("type") as EntityType | null
+    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+        ? queryType
+        : "pura"
+
+    const [entityType, setEntityType] = useState<EntityType>(defaultType)
     const [members, setMembers] = useState<OrganizationMember[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -52,10 +64,16 @@ export function OrganizationMembersList() {
 
     const limit = 10
 
+    useEffect(() => {
+        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+            setEntityType(queryType)
+        }
+    }, [queryType])
+
     const fetchMembers = async () => {
         try {
             setLoading(true)
-            const data = await organizationMembersApi.getAll()
+            const data = await organizationMembersApi.getAll(entityType)
             setMembers(data || [])
         } catch (error) {
             console.error("Failed to fetch members:", error)
@@ -66,7 +84,14 @@ export function OrganizationMembersList() {
 
     useEffect(() => {
         fetchMembers()
-    }, [])
+    }, [entityType])
+
+    const handleTabChange = (type: EntityType) => {
+        setEntityType(type)
+        router.push(`?type=${type}`, { scroll: false })
+        setSelectedPositions([])
+        setPage(1)
+    }
 
     const handleDelete = async (id: string) => {
         const result = await showConfirmAlert(
@@ -140,11 +165,32 @@ export function OrganizationMembersList() {
     const totalPages = Math.max(1, Math.ceil(filteredMembers.length / limit))
 
     if (showForm || editingId) {
-        return <OrganizationMemberForm memberId={editingId || undefined} onClose={handleFormClose} />
+        return <OrganizationMemberForm memberId={editingId || undefined} entityType={entityType} onClose={handleFormClose} />
     }
 
     return (
         <div className="space-y-6">
+
+            {!queryType && (
+                <div className="flex flex-wrap gap-2">
+                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => handleTabChange(type)}
+                            className={cn(
+                                "capitalize transition-all",
+                                entityType === type
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                    : "hover:text-orange-600 hover:border-orange-200"
+                            )}
+                        >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {type}
+                        </Button>
+                    ))}
+                </div>
+            )}
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <div className="p-5 bg-background/50 backdrop-blur-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
@@ -153,7 +199,7 @@ export function OrganizationMembersList() {
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Cari nama..."
+                                placeholder={`Cari anggota ${entityType}...`}
                                 className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -233,7 +279,7 @@ export function OrganizationMembersList() {
             ) : paginated.length === 0 ? (
                 <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground flex flex-col items-center">
                     <Users className="w-12 h-12 text-muted-foreground/20 mb-4" />
-                    <p>Tidak ada data anggota ditemukan.</p>
+                    <p>Tidak ada data anggota untuk <strong>{entityType}</strong>.</p>
                     {selectedPositions.length > 0 && (
                         <Button
                             variant="link"

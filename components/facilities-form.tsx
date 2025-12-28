@@ -11,7 +11,7 @@ import {Switch} from "@/components/ui/switch"
 import {CardContent} from "@/components/ui/card"
 import {validateFile} from "@/lib/validation"
 import {showSuccessAlert, showErrorAlert} from "@/lib/sweet-alert"
-import type {Facility} from "@/lib/types"
+import type {Facility, EntityType} from "@/lib/types"
 
 import {
     ArrowLeft,
@@ -20,16 +20,17 @@ import {
     Type,
     Edit2 as EditIcon,
     Image as ImageIcon,
-    UploadCloud,
-    X
+    UploadCloud
 } from "lucide-react"
 
 interface FacilityFormProps {
     facilityId?: string
+    entityType: EntityType
     onClose: () => void
 }
 
 type FacilityFormData = {
+    entity_type: EntityType
     name: string
     description: string
     image_url: string
@@ -37,8 +38,9 @@ type FacilityFormData = {
     is_active: boolean
 }
 
-export function FacilityForm({facilityId, onClose}: FacilityFormProps) {
+export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProps) {
     const [formData, setFormData] = useState<FacilityFormData>({
+        entity_type: entityType,
         name: "",
         description: "",
         image_url: "",
@@ -55,11 +57,18 @@ export function FacilityForm({facilityId, onClose}: FacilityFormProps) {
     const isEditMode = !!facilityId
 
     useEffect(() => {
+        if (!facilityId) {
+            setFormData(prev => ({ ...prev, entity_type: entityType }))
+        }
+    }, [entityType, facilityId])
+
+    useEffect(() => {
         if (isEditMode) {
             const fetchFacility = async () => {
                 try {
                     const data: Facility = await facilitiesApi.getById(facilityId)
                     setFormData({
+                        entity_type: data.entity_type,
                         name: data.name,
                         description: data.description,
                         image_url: data.image_url,
@@ -104,11 +113,6 @@ export function FacilityForm({facilityId, onClose}: FacilityFormProps) {
         setError("")
     }
 
-    const handleRemoveImage = () => {
-        setSelectedFile(null)
-        setPreviewUrl("")
-    }
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!validateForm()) return
@@ -134,7 +138,7 @@ export function FacilityForm({facilityId, onClose}: FacilityFormProps) {
             }
 
             if (isEditMode) {
-                await facilitiesApi.update(facilityId, payload)
+                await facilitiesApi.update(facilityId!, payload)
                 await showSuccessAlert("Berhasil Diupdate!", "Data fasilitas berhasil diperbarui.")
             } else {
                 await facilitiesApi.create(payload)
@@ -179,7 +183,7 @@ export function FacilityForm({facilityId, onClose}: FacilityFormProps) {
                                 {isEditMode ? "Edit Fasilitas" : "Tambah Fasilitas Baru"}
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Upload foto dan lengkapi detail fasilitas pura.
+                                Upload foto dan lengkapi detail fasilitas <span className="capitalize font-semibold text-orange-600">{entityType}</span>.
                             </p>
                         </div>
                     </div>

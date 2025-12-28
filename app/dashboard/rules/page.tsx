@@ -1,22 +1,22 @@
 import { DashboardHeader } from "@/components/dashboard-header"
-import { ContactInfoList } from "@/components/contact-info-list"
+import { RulesList } from "@/components/rules-list"
 import { EntityType } from "@/lib/types"
 
 const PAGE_CONFIG: Record<EntityType, { title: string; description: string; label: string }> = {
     pura: {
         label: "Pura",
-        title: "Kontak Pura",
-        description: "Kelola informasi kontak, alamat, dan jam operasional Pura."
+        title: "Tata Tertib & Himbauan Pura",
+        description: "Kelola aturan perilaku, tata tertib persembahyangan, dan himbauan untuk umat."
     },
     yayasan: {
         label: "Yayasan",
-        title: "Kontak Yayasan",
-        description: "Kelola alamat kantor dan kontak sekretariat Yayasan."
+        title: "Peraturan & Kebijakan Yayasan",
+        description: "Kelola dokumen peraturan, SK, dan kebijakan internal Yayasan."
     },
     pasraman: {
         label: "Pasraman",
-        title: "Kontak Pasraman",
-        description: "Kelola informasi kontak admin dan lokasi Pasraman."
+        title: "Tata Tertib Siswa Pasraman",
+        description: "Kelola aturan kedisiplinan, tata tertib belajar, dan panduan siswa."
     }
 }
 
@@ -24,9 +24,10 @@ type Props = {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function ContactInfoPage({ searchParams }: Props) {
+export default async function RulesPage({ searchParams }: Props){
     const params = await searchParams
     const rawType = typeof params.type === 'string' ? params.type : 'pura'
+
     const entityType = (['pura', 'yayasan', 'pasraman'].includes(rawType) ? rawType : 'pura') as EntityType
 
     const config = PAGE_CONFIG[entityType]
@@ -37,12 +38,13 @@ export default async function ContactInfoPage({ searchParams }: Props) {
                 breadcrumbs={[
                     { label: "Dashboard", href: "/dashboard" },
                     { label: config.label },
-                    { label: "Kontak & Lokasi" }
+                    { label: "Tata Tertib" }
                 ]}
                 title={config.title}
                 description={config.description}
             />
-            <ContactInfoList />
+
+            <RulesList />
         </div>
     )
 }

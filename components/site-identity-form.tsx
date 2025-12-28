@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { siteIdentityApi, storageApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { CardContent } from "@/components/ui/card"
 import { validateRequired, validateFile } from "@/lib/validation"
 import { showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
+import type { EntityType, SiteIdentity } from "@/lib/types"
 
 import {
     ArrowLeft,
@@ -22,59 +23,28 @@ import {
     MousePointerClick,
     Link as LinkIcon
 } from "lucide-react"
+
 interface SiteIdentityFormProps {
-    itemId?: string
+    initialData: SiteIdentity | null
+    entityType: EntityType
     onClose: () => void
 }
 
-interface SiteIdentity {
-    id: string
-    site_name: string
-    logo_url: string
-    tagline: string
-    primary_button_text: string
-    primary_button_link: string
-    secondary_button_text: string
-    secondary_button_link: string
-}
-
-export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
+export function SiteIdentityForm({ initialData, entityType, onClose }: SiteIdentityFormProps) {
     const [formData, setFormData] = useState({
-        site_name: "",
-        logo_url: "",
-        tagline: "",
-        primary_button_text: "",
-        primary_button_link: "",
-        secondary_button_text: "",
-        secondary_button_link: "",
+        site_name: initialData?.site_name || "",
+        logo_url: initialData?.logo_url || "",
+        tagline: initialData?.tagline || "",
+        primary_button_text: initialData?.primary_button_text || "",
+        primary_button_link: initialData?.primary_button_link || "",
+        secondary_button_text: initialData?.secondary_button_text || "",
+        secondary_button_link: initialData?.secondary_button_link || "",
     })
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string>("")
-    const [oldLogoUrl, setOldLogoUrl] = useState<string>("")
-
+    const [previewUrl, setPreviewUrl] = useState<string>(initialData?.logo_url || "")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
-
-    const isEditMode = !!itemId
-
-    useEffect(() => {
-        if (isEditMode) {
-            const fetchItem = async () => {
-                try {
-                    const data: SiteIdentity = await siteIdentityApi.getById(itemId)
-                    setFormData(data)
-                    setPreviewUrl(data.logo_url)
-                    setOldLogoUrl(data.logo_url)
-                } catch (err) {
-                    const msg = "Gagal memuat identitas website."
-                    setError(msg)
-                    await showErrorAlert("Error", msg)
-                }
-            }
-            fetchItem()
-        }
-    }, [itemId, isEditMode])
 
     const validateForm = (): boolean => {
         const siteNameError = validateRequired(formData.site_name, "Nama Website")
@@ -82,34 +52,10 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
             setError(siteNameError.message)
             return false
         }
-
-        if (!isEditMode && !selectedFile) {
-            setError("Logo wajib diupload untuk identitas baru.")
+        if (!initialData?.logo_url && !selectedFile) {
+            setError("Logo wajib diupload untuk konfigurasi awal.")
             return false
         }
-
-        const primaryButtonError = validateRequired(formData.primary_button_text, "Teks Tombol Utama")
-        if (primaryButtonError) {
-            setError(primaryButtonError.message)
-            return false
-        }
-        const primaryLinkError = validateRequired(formData.primary_button_link, "Link Tombol Utama")
-        if (primaryLinkError) {
-            setError(primaryLinkError.message)
-            return false
-        }
-
-        const secondaryButtonError = validateRequired(formData.secondary_button_text, "Teks Tombol Kedua")
-        if (secondaryButtonError) {
-            setError(secondaryButtonError.message)
-            return false
-        }
-        const secondaryLinkError = validateRequired(formData.secondary_button_link, "Link Tombol Kedua")
-        if (secondaryLinkError) {
-            setError(secondaryLinkError.message)
-            return false
-        }
-
         return true
     }
 
@@ -143,8 +89,8 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                 const result = await storageApi.upload(selectedFile)
                 finalLogoUrl = result.url
 
-                if (isEditMode && oldLogoUrl && oldLogoUrl !== finalLogoUrl) {
-                    const key = oldLogoUrl.split("/").pop()
+                if (initialData?.logo_url && initialData.logo_url !== finalLogoUrl) {
+                    const key = initialData.logo_url.split("/").pop()
                     if (key) await storageApi.delete(`uploads/${key}`)
                 }
             }
@@ -152,18 +98,19 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
             const payload = {
                 ...formData,
                 logo_url: finalLogoUrl,
+                entity_type: entityType
             }
 
-            if (isEditMode) {
-                await siteIdentityApi.update(itemId!, payload)
-                await showSuccessAlert("Berhasil Diupdate!", "Identitas website berhasil diperbarui.")
+            if (initialData && initialData.id) {
+                await siteIdentityApi.update(initialData.id, payload)
             } else {
                 await siteIdentityApi.create(payload)
-                await showSuccessAlert("Berhasil Ditambah!", "Identitas website berhasil disimpan.")
             }
 
+            await showSuccessAlert("Berhasil!", `Identitas ${entityType} berhasil disimpan.`)
             onClose()
         } catch (err) {
+            console.error(err)
             const message = err instanceof Error ? err.message : "Gagal menyimpan identitas"
             setError(message)
             await showErrorAlert("Error", message)
@@ -181,7 +128,7 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                     className="group pl-0 hover:bg-transparent text-muted-foreground hover:text-orange-600 transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
-                    Kembali ke Daftar
+                    Kembali ke Preview
                 </Button>
             </div>
 
@@ -189,16 +136,16 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
 
                 <div className="bg-muted/30 border-b p-6">
                     <div className="flex items-start gap-4">
-                        <div className={`p-2.5 rounded-lg border shadow-sm ${isEditMode ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-orange-50 text-orange-600 border-orange-100"}`}>
-                            {isEditMode ? <EditIcon className="w-5 h-5"/> : <Globe className="w-5 h-5"/>}
+                        <div className="p-2.5 rounded-lg border shadow-sm bg-orange-50 text-orange-600 border-orange-100">
+                            {initialData ? <EditIcon className="w-5 h-5"/> : <Globe className="w-5 h-5"/>}
                         </div>
 
                         <div>
                             <h2 className="text-xl font-bold text-foreground leading-tight">
-                                {isEditMode ? "Edit Identitas Website" : "Atur Identitas Baru"}
+                                {initialData ? "Edit Identitas" : "Konfigurasi Identitas"} <span className="capitalize">{entityType}</span>
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Kelola logo, nama, tagline, dan tombol aksi utama website.
+                                Kelola logo, nama, tagline, dan tombol aksi utama untuk modul ini.
                             </p>
                         </div>
                     </div>
@@ -230,20 +177,10 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                                                         className="max-w-full max-h-full object-contain p-2"
                                                     />
                                                 </div>
-                                                <div className="absolute top-0 right-0 lg:right-auto lg:left-24 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <label
-                                                        htmlFor="change-logo"
-                                                        className="cursor-pointer bg-white/90 hover:bg-white text-gray-700 p-1.5 rounded-full shadow-md border hover:text-orange-600 transition-colors"
-                                                        title="Ganti Logo"
-                                                    >
+                                                <div className="absolute top-0 right-0 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <label className="cursor-pointer bg-white/90 hover:bg-white text-gray-700 p-1.5 rounded-full shadow-md border hover:text-orange-600 transition-colors" title="Ganti Logo">
                                                         <EditIcon className="w-3.5 h-3.5" />
-                                                        <input
-                                                            id="change-logo"
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={handleImageSelect}
-                                                            className="hidden"
-                                                        />
+                                                        <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                                                     </label>
                                                 </div>
                                             </div>
@@ -253,12 +190,7 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                                                     <UploadCloud className="w-6 h-6" />
                                                 </div>
                                                 <span className="text-xs text-muted-foreground">Upload Logo</span>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleImageSelect}
-                                                    className="hidden"
-                                                />
+                                                <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                                             </label>
                                         )}
                                     </div>
@@ -270,18 +202,18 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                                                 id="site_name"
                                                 value={formData.site_name}
                                                 onChange={(e) => setFormData({ ...formData, site_name: e.target.value })}
-                                                placeholder="Contoh: Pura Agung Kertajaya"
+                                                placeholder={`Contoh: ${entityType === 'pura' ? 'Pura Agung Kertajaya' : 'Yayasan ...'}`}
                                                 className="bg-background focus-visible:ring-orange-500"
                                             />
                                         </div>
 
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="tagline" className="text-xs font-semibold uppercase text-muted-foreground">Tagline / Deskripsi Singkat <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="tagline" className="text-xs font-semibold uppercase text-muted-foreground">Tagline / Deskripsi Singkat</Label>
                                             <Textarea
                                                 id="tagline"
                                                 value={formData.tagline}
                                                 onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                                                placeholder="Contoh: Pusat kegiatan rohani dan kebudayaan Hindu dengan nilai-nilai dharma..."
+                                                placeholder="Contoh: Pusat kegiatan rohani dan kebudayaan..."
                                                 className="bg-background min-h-[100px] resize-y focus-visible:ring-orange-500 leading-relaxed"
                                             />
                                         </div>
@@ -298,7 +230,7 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
 
                                     <div className="p-4 rounded-lg bg-orange-50/50 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/20 space-y-3 transition-colors">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="primary_text" className="text-xs">Teks Tombol <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="primary_text" className="text-xs">Teks Tombol</Label>
                                             <div className="relative">
                                                 <Type className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/50" />
                                                 <Input
@@ -311,14 +243,14 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="primary_link" className="text-xs">Link Tujuan <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="primary_link" className="text-xs">Link Tujuan</Label>
                                             <div className="relative">
                                                 <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/50" />
                                                 <Input
                                                     id="primary_link"
                                                     value={formData.primary_button_link}
                                                     onChange={(e) => setFormData({ ...formData, primary_button_link: e.target.value })}
-                                                    placeholder="/kontak atau #about"
+                                                    placeholder="/#about"
                                                     className="pl-9 bg-background focus-visible:ring-orange-500"
                                                 />
                                             </div>
@@ -333,7 +265,7 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
 
                                     <div className="p-4 rounded-lg bg-muted/30 border space-y-3">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="secondary_text" className="text-xs">Teks Tombol <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="secondary_text" className="text-xs">Teks Tombol</Label>
                                             <div className="relative">
                                                 <Type className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/50" />
                                                 <Input
@@ -346,14 +278,14 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="secondary_link" className="text-xs">Link Tujuan <span className="text-red-500">*</span></Label>
+                                            <Label htmlFor="secondary_link" className="text-xs">Link Tujuan</Label>
                                             <div className="relative">
                                                 <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/50" />
                                                 <Input
                                                     id="secondary_link"
                                                     value={formData.secondary_button_link}
                                                     onChange={(e) => setFormData({ ...formData, secondary_button_link: e.target.value })}
-                                                    placeholder="/gallery atau #gallery"
+                                                    placeholder="/#gallery"
                                                     className="pl-9 bg-background focus-visible:ring-orange-500"
                                                 />
                                             </div>
@@ -364,7 +296,7 @@ export function SiteIdentityForm({ itemId, onClose }: SiteIdentityFormProps) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-6 mt-8 border-t">
+                        <div className="flex items-center justify-end gap-3 pt-6 pb-6 mt-8 border-t">
                             <Button
                                 type="button"
                                 variant="outline"

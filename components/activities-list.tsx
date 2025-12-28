@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { Activity } from "@/lib/types"
+import { useSearchParams, useRouter } from "next/navigation"
+import type { Activity, EntityType } from "@/lib/types"
 import { activitiesApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,10 +15,10 @@ import {
     MapPin,
     Clock,
     MoreHorizontal,
-    ArrowUpDown,
     LayoutList,
     Eye,
-    EyeOff
+    EyeOff,
+    Building2
 } from "lucide-react"
 import { ActivityForm } from "./activity-form"
 import { showConfirmAlert, showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
@@ -34,8 +35,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function ActivitiesList() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    const queryType = searchParams.get("type") as EntityType | null
+    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+        ? queryType
+        : "pura"
+
+    const [entityType, setEntityType] = useState<EntityType>(defaultType)
     const [activities, setActivities] = useState<Activity[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -45,10 +56,16 @@ export function ActivitiesList() {
 
     const limit = 5
 
+    useEffect(() => {
+        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+            setEntityType(queryType)
+        }
+    }, [queryType])
+
     const fetchActivities = async () => {
         try {
             setLoading(true)
-            const data = await activitiesApi.getAll()
+            const data = await activitiesApi.getAll(entityType)
             setActivities(data || [])
         } catch (error) {
             console.error("Failed to fetch activities:", error)
@@ -59,11 +76,16 @@ export function ActivitiesList() {
 
     useEffect(() => {
         fetchActivities()
-    }, [])
+    }, [entityType])
 
     useEffect(() => {
         setPage(1)
-    }, [searchQuery])
+    }, [searchQuery, entityType])
+
+    const handleTabChange = (type: EntityType) => {
+        setEntityType(type)
+        router.push(`?type=${type}`, { scroll: false })
+    }
 
     const handleDelete = async (id: string) => {
         const result = await showConfirmAlert(
@@ -100,17 +122,44 @@ export function ActivitiesList() {
     const getRowNumber = (index: number) => (page - 1) * limit + index + 1;
 
     if (showForm || editingId) {
-        return <ActivityForm activityId={editingId || undefined} onClose={handleFormClose} />
+        return (
+            <ActivityForm
+                activityId={editingId || undefined}
+                entityType={entityType}
+                onClose={handleFormClose}
+            />
+        )
     }
 
     return (
         <div className="space-y-6">
+            {!queryType && (
+                <div className="flex flex-wrap gap-2">
+                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => handleTabChange(type)}
+                            className={cn(
+                                "capitalize transition-all",
+                                entityType === type
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                    : "hover:text-orange-600 hover:border-orange-200"
+                            )}
+                        >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {type}
+                        </Button>
+                    ))}
+                </div>
+            )}
+
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <div className="p-5 border-b bg-background/50 backdrop-blur-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
                     <div className="relative w-full sm:w-96">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari nama kegiatan atau lokasi..."
+                            placeholder={`Cari kegiatan ${entityType}...`}
                             className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -128,25 +177,7 @@ export function ActivitiesList() {
                 <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/40 text-xs font-bold text-muted-foreground uppercase tracking-wider items-center">
                     <div className="col-span-1 text-center">No</div>
                     <div className="col-span-4">Informasi Kegiatan</div>
-
-                    <div className="col-span-1 text-center flex justify-center">
-                        <TooltipProvider>
-                            <Tooltip delayDuration={300}>
-                                <TooltipTrigger asChild>
-                                    <div className="flex items-center justify-center gap-1 cursor-help hover:text-orange-600 transition-colors select-none">
-                                        Urutan <ArrowUpDown className="w-3 h-3" />
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="bg-foreground text-background text-xs max-w-[200px] text-center p-3 shadow-xl border-none">
-                                    <p className="font-semibold mb-1">Prioritas Tampilan</p>
-                                    <p className="font-normal opacity-90">
-                                        Menentukan urutan kegiatan di website utama. Angka lebih kecil tampil lebih dulu.
-                                    </p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-
+                    <div className="col-span-1 text-center flex justify-center">Urutan</div>
                     <div className="col-span-3">Jadwal & Lokasi</div>
                     <div className="col-span-2 text-center">Status</div>
                     <div className="col-span-1 text-end">Aksi</div>
@@ -173,7 +204,7 @@ export function ActivitiesList() {
                         </div>
                         <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                         <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                            Tidak ada kegiatan yang cocok dengan "{searchQuery}" atau belum ada data.
+                            Tidak ada kegiatan untuk <strong>{entityType}</strong> yang cocok dengan "{searchQuery}" atau belum ada data.
                         </p>
                     </div>
                 ) : (

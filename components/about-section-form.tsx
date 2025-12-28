@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { CardContent } from "@/components/ui/card"
 import { validateFile } from "@/lib/validation"
 import { showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
-import type { AboutValue } from "@/lib/types"
+import type { AboutValue, EntityType } from "@/lib/types"
 
 import {
     ArrowLeft,
@@ -27,9 +27,11 @@ import {
     Trash2,
     GripVertical
 } from "lucide-react"
+
 type AboutValueFormData = Omit<AboutValue, "id" | "about_id" | "created_at" | "updated_at">
 
 interface AboutSectionFormData {
+    entity_type: EntityType
     title: string
     description: string
     image_url: string
@@ -39,11 +41,13 @@ interface AboutSectionFormData {
 
 interface AboutSectionFormProps {
     sectionId?: string
+    entityType: EntityType
     onClose: () => void
 }
 
-export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) {
+export function AboutSectionForm({ sectionId, entityType, onClose }: AboutSectionFormProps) {
     const [formData, setFormData] = useState<AboutSectionFormData>({
+        entity_type: entityType,
         title: "",
         description: "",
         image_url: "",
@@ -61,11 +65,18 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
     const isEditMode = !!sectionId
 
     useEffect(() => {
+        if (!sectionId) {
+            setFormData(prev => ({ ...prev, entity_type: entityType }))
+        }
+    }, [entityType, sectionId])
+
+    useEffect(() => {
         if (isEditMode) {
             const fetchSection = async () => {
                 try {
                     const data = await aboutApi.getById(sectionId)
                     setFormData({
+                        entity_type: data.entity_type,
                         title: data.title,
                         description: data.description,
                         image_url: data.image_url,
@@ -109,6 +120,11 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
         value: string | number
     ) => {
         const newValues = [...formData.values]
+
+        if (field === "value" && typeof value === "string") {
+            if (value.length > 100) return
+        }
+
         newValues[index] = { ...newValues[index], [field]: value }
         setFormData((prev) => ({ ...prev, values: newValues }))
     }
@@ -141,6 +157,12 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
 
         if (!isEditMode && !selectedFile) {
             setError("Foto wajib diupload untuk data baru.")
+            return
+        }
+
+        const valueTooLong = formData.values.find(v => v.value.length > 100)
+        if (valueTooLong) {
+            setError(`Keterangan poin "${valueTooLong.title || 'Tanpa Judul'}" melebihi 100 karakter.`)
             return
         }
 
@@ -209,7 +231,7 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
                                 {isEditMode ? "Edit Informasi" : "Tambah Informasi Baru"}
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Kelola sejarah serta nilai-nilai yang ada di pura.
+                                Kelola sejarah serta nilai-nilai untuk <span className="capitalize font-semibold text-orange-600">{entityType}</span>.
                             </p>
                         </div>
                     </div>
@@ -289,7 +311,7 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
                                                 id="title"
                                                 value={formData.title}
                                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                                placeholder="Contoh: Tentang Pura Agung Kertajaya"
+                                                placeholder={`Contoh: Tentang ${entityType === 'pura' ? 'Pura Agung' : entityType}...`}
                                                 className="bg-background focus-visible:ring-orange-500"
                                                 required
                                             />
@@ -300,7 +322,7 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
                                                 id="description"
                                                 value={formData.description}
                                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                                placeholder="Tuliskan sejarah atau deskripsi lengkap pura disini..."
+                                                placeholder="Tuliskan sejarah, visi misi, atau deskripsi lengkap disini..."
                                                 className="bg-background min-h-[150px] resize-y focus-visible:ring-orange-500 leading-relaxed"
                                                 required
                                             />
@@ -362,12 +384,18 @@ export function AboutSectionForm({ sectionId, onClose }: AboutSectionFormProps) 
                                                         </div>
 
                                                         <div className="space-y-1.5">
-                                                            <Label className="text-xs text-muted-foreground">Isi / Keterangan</Label>
+                                                            <div className="flex justify-between">
+                                                                <Label className="text-xs text-muted-foreground">Isi / Keterangan</Label>
+                                                                <span className={`text-[10px] ${value.value.length > 100 ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
+                                                                    {value.value.length}/100
+                                                                </span>
+                                                            </div>
                                                             <Textarea
                                                                 value={value.value}
                                                                 onChange={(e) => handleValueChange(index, "value", e.target.value)}
-                                                                placeholder="Jelaskan poin ini..."
-                                                                className="min-h-[60px] resize-y text-sm"
+                                                                placeholder="Jelaskan poin ini (Maksimal 100 karakter)..."
+                                                                className={`min-h-[60px] resize-y text-sm ${value.value.length >= 100 ? 'border-red-300 focus-visible:ring-red-500' : ''}`}
+                                                                maxLength={100}
                                                             />
                                                         </div>
                                                     </div>

@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import type { EntityType } from "@/lib/types"
 import { organizationMembersApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,23 +22,16 @@ import {
     ListOrdered,
     Edit2 as EditIcon
 } from "lucide-react"
+
 interface OrganizationMemberFormProps {
     memberId?: string
+    entityType: EntityType
     onClose: () => void
 }
 
-interface OrganizationMember {
-    id: string
-    name: string
-    position: string
-    position_order: number
-    order_index: number
-    is_active: boolean
-}
-
-export function OrganizationMemberForm({ memberId, onClose }: OrganizationMemberFormProps) {
-    const [formData, setFormData] = useState<OrganizationMember>({
-        id: "",
+export function OrganizationMemberForm({ memberId, entityType, onClose }: OrganizationMemberFormProps) {
+    const [formData, setFormData] = useState({
+        entity_type: entityType,
         name: "",
         position: "",
         position_order: 1,
@@ -51,11 +45,24 @@ export function OrganizationMemberForm({ memberId, onClose }: OrganizationMember
     const isEditMode = !!memberId
 
     useEffect(() => {
-        if (isEditMode) {
+        if (!memberId) {
+            setFormData(prev => ({ ...prev, entity_type: entityType }))
+        }
+    }, [entityType, memberId])
+
+    useEffect(() => {
+        if (isEditMode && memberId) {
             const load = async () => {
                 try {
                     const data = await organizationMembersApi.getById(memberId)
-                    setFormData(data)
+                    setFormData({
+                        entity_type: data.entity_type,
+                        name: data.name,
+                        position: data.position,
+                        position_order: data.position_order,
+                        order_index: data.order_index,
+                        is_active: data.is_active,
+                    })
                 } catch {
                     const msg = "Gagal memuat data anggota."
                     setError(msg)
@@ -95,11 +102,16 @@ export function OrganizationMemberForm({ memberId, onClose }: OrganizationMember
 
         setLoading(true)
         try {
+            const payload = {
+                ...formData,
+                entity_type: entityType
+            }
+
             if (isEditMode) {
-                await organizationMembersApi.update(memberId, formData)
+                await organizationMembersApi.update(memberId!, payload)
                 await showSuccessAlert("Berhasil Diupdate!", "Data anggota berhasil diperbarui.")
             } else {
-                await organizationMembersApi.create(formData)
+                await organizationMembersApi.create(payload)
                 await showSuccessAlert("Berhasil Ditambah!", "Anggota baru berhasil disimpan.")
             }
             onClose()
@@ -139,7 +151,7 @@ export function OrganizationMemberForm({ memberId, onClose }: OrganizationMember
                                 {isEditMode ? "Edit Anggota" : "Tambah Anggota Baru"}
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Kelola data anggota dan struktur organisasi pura.
+                                Kelola data anggota dan struktur organisasi <span className="capitalize font-semibold text-orange-600">{entityType}</span>.
                             </p>
                         </div>
                     </div>

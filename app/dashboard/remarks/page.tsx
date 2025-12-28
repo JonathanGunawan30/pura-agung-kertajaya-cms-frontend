@@ -1,22 +1,22 @@
 import { DashboardHeader } from "@/components/dashboard-header"
-import { ContactInfoList } from "@/components/contact-info-list"
+import { RemarksList } from "@/components/remarks-list"
 import { EntityType } from "@/lib/types"
 
 const PAGE_CONFIG: Record<EntityType, { title: string; description: string; label: string }> = {
     pura: {
         label: "Pura",
-        title: "Kontak Pura",
-        description: "Kelola informasi kontak, alamat, dan jam operasional Pura."
+        title: "Kata Sambutan Pura",
+        description: "Kelola pesan dan kata sambutan dari pengurus atau tokoh Pura."
     },
     yayasan: {
         label: "Yayasan",
-        title: "Kontak Yayasan",
-        description: "Kelola alamat kantor dan kontak sekretariat Yayasan."
+        title: "Kata Sambutan Yayasan",
+        description: "Kelola pesan dari pengurus Yayasan untuk ditampilkan di website."
     },
     pasraman: {
         label: "Pasraman",
-        title: "Kontak Pasraman",
-        description: "Kelola informasi kontak admin dan lokasi Pasraman."
+        title: "Kata Sambutan Pasraman",
+        description: "Kelola pesan motivasi atau sambutan dari pengurus Pasraman."
     }
 }
 
@@ -24,7 +24,7 @@ type Props = {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function ContactInfoPage({ searchParams }: Props) {
+export default async function RemarksPage({ searchParams }: Props) {
     const params = await searchParams
     const rawType = typeof params.type === 'string' ? params.type : 'pura'
     const entityType = (['pura', 'yayasan', 'pasraman'].includes(rawType) ? rawType : 'pura') as EntityType
@@ -37,12 +37,12 @@ export default async function ContactInfoPage({ searchParams }: Props) {
                 breadcrumbs={[
                     { label: "Dashboard", href: "/dashboard" },
                     { label: config.label },
-                    { label: "Kontak & Lokasi" }
+                    { label: "Kata Sambutan" }
                 ]}
                 title={config.title}
                 description={config.description}
             />
-            <ContactInfoList />
+            <RemarksList />
         </div>
     )
 }

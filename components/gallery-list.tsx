@@ -1,7 +1,9 @@
 "use client"
 
 import {useState, useEffect} from "react"
-import type {Gallery} from "@/lib/types"
+import {useSearchParams, useRouter} from "next/navigation"
+import Image from "next/image"
+import type {Gallery, EntityType} from "@/lib/types"
 import {galleryApi, storageApi} from "@/lib/api-client"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
@@ -20,6 +22,7 @@ import {
     RotateCcw,
     ExternalLink,
     X,
+    Building2,
 } from "lucide-react"
 import {GalleryForm} from "./gallery-form"
 import {showSuccessAlert, showErrorAlert, showConfirmAlert} from "@/lib/sweet-alert"
@@ -36,8 +39,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function GalleryList() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    const queryType = searchParams.get("type") as EntityType | null
+    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+        ? queryType
+        : "pura"
+
+    const [entityType, setEntityType] = useState<EntityType>(defaultType)
     const [items, setItems] = useState<Gallery[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -46,17 +59,21 @@ export function GalleryList() {
     const [page, setPage] = useState(1)
 
     const [previewImage, setPreviewImage] = useState<string | null>(null)
-
     const [zoom, setZoom] = useState(1)
 
     const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
-
     const limit = 6
+
+    useEffect(() => {
+        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+            setEntityType(queryType)
+        }
+    }, [queryType])
 
     const fetchItems = async () => {
         try {
             setLoading(true)
-            const data = await galleryApi.getAll()
+            const data = await galleryApi.getAll(entityType)
             setItems(data || [])
         } catch (error) {
             console.error("Failed to fetch gallery items:", error)
@@ -67,11 +84,16 @@ export function GalleryList() {
 
     useEffect(() => {
         fetchItems()
-    }, [])
+    }, [entityType])
 
     useEffect(() => {
         setPage(1)
-    }, [searchQuery])
+    }, [searchQuery, entityType])
+
+    const handleTabChange = (type: EntityType) => {
+        setEntityType(type)
+        router.push(`?type=${type}`, { scroll: false })
+    }
 
     const handleDelete = async (id: string, imageUrl: string) => {
         const result = await showConfirmAlert("Hapus Galeri", "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan.")
@@ -110,11 +132,32 @@ export function GalleryList() {
     const totalPages = Math.ceil(filteredItems.length / limit)
 
     if (showForm || editingId) {
-        return <GalleryForm itemId={editingId || undefined} onClose={handleFormClose}/>
+        return <GalleryForm itemId={editingId || undefined} entityType={entityType} onClose={handleFormClose}/>
     }
 
     return (
         <div className="space-y-6">
+
+            {!queryType && (
+                <div className="flex flex-wrap gap-2">
+                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => handleTabChange(type)}
+                            className={cn(
+                                "capitalize transition-all",
+                                entityType === type
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                    : "hover:text-orange-600 hover:border-orange-200"
+                            )}
+                        >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {type}
+                        </Button>
+                    ))}
+                </div>
+            )}
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <div
@@ -122,7 +165,7 @@ export function GalleryList() {
                     <div className="relative w-full sm:w-96">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                         <Input
-                            placeholder="Cari judul galeri..."
+                            placeholder={`Cari galeri ${entityType}...`}
                             className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -165,12 +208,12 @@ export function GalleryList() {
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                     <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                        Tidak ada item galeri yang cocok dengan "{searchQuery}" atau belum ada data.
+                        Tidak ada item galeri untuk <strong>{entityType}</strong> yang cocok dengan "{searchQuery}" atau belum ada data.
                     </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginated.map((item) => (
+                    {paginated.map((item, index) => (
                         <div
                             key={item.id}
                             className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
@@ -186,10 +229,13 @@ export function GalleryList() {
                             >
                                 {item.image_url ? (
                                     <>
-                                        <img
+                                        <Image
                                             src={item.image_url}
                                             alt={item.title}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                            priority={index < 4}
                                         />
 
                                         <div
@@ -379,7 +425,7 @@ export function GalleryList() {
                                 e.stopPropagation()
                                 setZoom(zoom === 1 ? 2 : 1)
                             }}
-                            onClick={(e) => e.stopPropagation()} // Prevent close on image click
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 
@@ -408,7 +454,7 @@ function StatusBadge({isActive}: { isActive: boolean }) {
                             isActive
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
                                 : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"
-                            }
+                        }
                         `}
                     >
                         {isActive ? <Eye className="w-3 h-3"/> : <EyeOff className="w-3 h-3"/>}

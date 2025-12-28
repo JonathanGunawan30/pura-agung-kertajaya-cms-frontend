@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import type { EntityType } from "@/lib/types"
 import { contactInfoApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +27,13 @@ import {
 
 interface ContactInfoFormProps {
   itemId?: string
+  entityType: EntityType
   onClose: () => void
 }
 
-export function ContactInfoForm({ itemId, onClose }: ContactInfoFormProps) {
+export function ContactInfoForm({ itemId, entityType, onClose }: ContactInfoFormProps) {
   const [formData, setFormData] = useState({
+    entity_type: entityType,
     address: "",
     phone: "",
     email: "",
@@ -44,11 +47,18 @@ export function ContactInfoForm({ itemId, onClose }: ContactInfoFormProps) {
   const isEditMode = !!itemId
 
   useEffect(() => {
+    if (!itemId) {
+      setFormData(prev => ({ ...prev, entity_type: entityType }))
+    }
+  }, [entityType, itemId])
+
+  useEffect(() => {
     if (isEditMode) {
       const fetchItem = async () => {
         try {
           const data = await contactInfoApi.getById(itemId)
           setFormData({
+            entity_type: data.entity_type,
             address: data.address,
             phone: data.phone,
             email: data.email,
@@ -83,11 +93,16 @@ export function ContactInfoForm({ itemId, onClose }: ContactInfoFormProps) {
     setLoading(true)
 
     try {
+      const payload = {
+        ...formData,
+        entity_type: entityType
+      }
+
       if (isEditMode) {
-        await contactInfoApi.update(itemId!, formData)
+        await contactInfoApi.update(itemId!, payload)
         await showSuccessAlert("Berhasil Diupdate!", "Informasi kontak berhasil diperbarui.")
       } else {
-        await contactInfoApi.create(formData)
+        await contactInfoApi.create(payload)
         await showSuccessAlert("Berhasil Ditambah!", "Informasi kontak baru berhasil disimpan.")
       }
       onClose()
@@ -127,7 +142,7 @@ export function ContactInfoForm({ itemId, onClose }: ContactInfoFormProps) {
                   {isEditMode ? "Edit Kontak" : "Tambah Kontak Baru"}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Atur informasi alamat, telepon, dan peta lokasi pura.
+                  Atur informasi alamat, telepon, dan peta lokasi untuk <span className="capitalize font-semibold text-orange-600">{entityType}</span>.
                 </p>
               </div>
             </div>

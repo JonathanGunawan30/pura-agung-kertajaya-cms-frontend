@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { AboutSection } from "@/lib/types"
+import { useSearchParams, useRouter } from "next/navigation"
+import Image from "next/image"
+import type { AboutSection, EntityType } from "@/lib/types"
 import { aboutApi, storageApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,6 +22,7 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  Building2
 } from "lucide-react"
 import { AboutSectionForm } from "./about-section-form"
 import { showSuccessAlert, showErrorAlert, showConfirmAlert } from "@/lib/sweet-alert"
@@ -30,8 +33,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function AboutSectionList() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const queryType = searchParams.get("type") as EntityType | null
+  const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+      ? queryType
+      : "pura"
+
+  const [entityType, setEntityType] = useState<EntityType>(defaultType)
   const [sections, setSections] = useState<AboutSection[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -41,10 +54,16 @@ export function AboutSectionList() {
   const [zoom, setZoom] = useState(1)
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
+  useEffect(() => {
+    if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+      setEntityType(queryType)
+    }
+  }, [queryType])
+
   const fetchSections = async () => {
     try {
       setLoading(true)
-      const data = await aboutApi.getAll()
+      const data = await aboutApi.getAll(entityType)
       setSections(data || [])
     } catch (error) {
       console.error("Failed to fetch about sections:", error)
@@ -55,7 +74,12 @@ export function AboutSectionList() {
 
   useEffect(() => {
     fetchSections()
-  }, [])
+  }, [entityType])
+
+  const handleTabChange = (type: EntityType) => {
+    setEntityType(type)
+    router.push(`?type=${type}`, { scroll: false })
+  }
 
   const handleDelete = async (id: string, imageUrl: string) => {
     const result = await showConfirmAlert(
@@ -89,17 +113,38 @@ export function AboutSectionList() {
   }
 
   if (showForm || editingId) {
-    return <AboutSectionForm sectionId={editingId || undefined} onClose={handleFormClose} />
+    return <AboutSectionForm sectionId={editingId || undefined} entityType={entityType} onClose={handleFormClose} />
   }
 
   return (
       <div className="space-y-6">
 
+        {!queryType && (
+            <div className="flex flex-wrap gap-2">
+              {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                  <Button
+                      key={type}
+                      variant={entityType === type ? "default" : "outline"}
+                      onClick={() => handleTabChange(type)}
+                      className={cn(
+                          "capitalize transition-all",
+                          entityType === type
+                              ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                              : "hover:text-orange-600 hover:border-orange-200"
+                      )}
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    {type}
+                  </Button>
+              ))}
+            </div>
+        )}
+
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
           <div className="p-5 bg-background/50 backdrop-blur-sm flex justify-between items-center">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Info className="w-5 h-5 text-orange-600" />
-              <span className="text-sm font-medium">Informasi Tentang Pura</span>
+              <span className="text-sm font-medium">Informasi Tentang <span className="capitalize">{entityType}</span></span>
             </div>
 
             {sections.length === 0 && !loading && (
@@ -112,6 +157,7 @@ export function AboutSectionList() {
             )}
           </div>
         </div>
+
         {loading ? (
             <div className="rounded-xl border bg-card shadow-sm p-6 space-y-6">
               <div className="flex justify-between">
@@ -137,7 +183,7 @@ export function AboutSectionList() {
               </div>
               <h3 className="text-lg font-semibold text-foreground">Belum ada informasi</h3>
               <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                Silakan tambahkan informasi "Tentang Kami" untuk ditampilkan di website.
+                Silakan tambahkan informasi "Tentang Kami" untuk <strong>{entityType}</strong> agar ditampilkan di website.
               </p>
             </div>
         ) : (
@@ -151,7 +197,6 @@ export function AboutSectionList() {
                       <div>
                         <h3 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-3">
                           {section.title}
-
                           <StatusBadge isActive={section.is_active} />
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -193,10 +238,13 @@ export function AboutSectionList() {
                         >
                           {section.image_url ? (
                               <>
-                                <img
+                                <Image
                                     src={section.image_url}
                                     alt={section.title}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 350px"
+                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                    priority
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
                                   <div className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white">

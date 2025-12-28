@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import type { ContactInfo } from "@/lib/types"
+import { useSearchParams, useRouter } from "next/navigation"
+import type { ContactInfo, EntityType } from "@/lib/types"
 import { contactInfoApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,22 +15,39 @@ import {
   Clock,
   Contact,
   Map as MapIcon,
-  Globe
+  Globe,
+  Building2
 } from "lucide-react"
 import { ContactInfoForm } from "./contact-info-form"
 import { showSuccessAlert, showErrorAlert, showConfirmAlert } from "@/lib/sweet-alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 export function ContactInfoList() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const queryType = searchParams.get("type") as EntityType | null
+  const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+      ? queryType
+      : "pura"
+
+  const [entityType, setEntityType] = useState<EntityType>(defaultType)
   const [items, setItems] = useState<ContactInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
+  useEffect(() => {
+    if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+      setEntityType(queryType)
+    }
+  }, [queryType])
+
   const fetchItems = async () => {
     try {
       setLoading(true)
-      const data = await contactInfoApi.getAll()
+      const data = await contactInfoApi.getAll(entityType)
       setItems(data || [])
     } catch (error) {
       console.error("Failed to fetch contact info:", error)
@@ -40,7 +58,12 @@ export function ContactInfoList() {
 
   useEffect(() => {
     fetchItems()
-  }, [])
+  }, [entityType])
+
+  const handleTabChange = (type: EntityType) => {
+    setEntityType(type)
+    router.push(`?type=${type}`, { scroll: false })
+  }
 
   const handleDelete = async (id: string) => {
     const result = await showConfirmAlert(
@@ -68,20 +91,41 @@ export function ContactInfoList() {
   }
 
   if (showForm || editingId) {
-    return <ContactInfoForm itemId={editingId || undefined} onClose={handleFormClose} />
+    return <ContactInfoForm itemId={editingId || undefined} entityType={entityType} onClose={handleFormClose} />
   }
 
   return (
       <div className="space-y-6">
 
+        {!queryType && (
+            <div className="flex flex-wrap gap-2">
+              {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                  <Button
+                      key={type}
+                      variant={entityType === type ? "default" : "outline"}
+                      onClick={() => handleTabChange(type)}
+                      className={cn(
+                          "capitalize transition-all",
+                          entityType === type
+                              ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                              : "hover:text-orange-600 hover:border-orange-200"
+                      )}
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    {type}
+                  </Button>
+              ))}
+            </div>
+        )}
+
         <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
           <div className="p-5 bg-background/50 backdrop-blur-sm flex justify-between items-center">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Contact className="w-5 h-5 text-orange-600" />
-              <span className="text-sm font-medium">Informasi Kontak & Lokasi</span>
+              <span className="text-sm font-medium">Informasi Kontak <span className="capitalize">{entityType}</span></span>
             </div>
 
-            {items.length === 0 && !loading && (
+            {!loading && items.length === 0 && (
                 <Button
                     onClick={() => setShowForm(true)}
                     className="bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm transition-all"
@@ -123,7 +167,7 @@ export function ContactInfoList() {
               </div>
               <h3 className="text-lg font-semibold text-foreground">Belum ada data kontak</h3>
               <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                Tambahkan alamat, telepon, dan peta lokasi pura agar umat mudah menghubungi.
+                Tambahkan alamat, telepon, dan peta lokasi <strong>{entityType}</strong> agar mudah dihubungi.
               </p>
             </div>
         ) : (
@@ -136,7 +180,7 @@ export function ContactInfoList() {
                     <div className="p-6 border-b bg-muted/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div>
                         <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-                          <Globe className="w-5 h-5 text-orange-600" /> Informasi Kontak & Lokasi
+                          <Globe className="w-5 h-5 text-orange-600" /> Kontak & Lokasi
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           Data ini akan ditampilkan di footer dan halaman kontak website.
@@ -241,7 +285,6 @@ export function ContactInfoList() {
                                   className="w-full h-full filter grayscale-[20%] group-hover/map:grayscale-0 transition-all duration-500"
                               ></iframe>
 
-                              {/* Overlay Hint */}
                               <div className="absolute top-2 right-2 bg-white/90 backdrop-blur text-[10px] px-2 py-1 rounded border shadow-sm text-muted-foreground pointer-events-none">
                                 Google Maps
                               </div>

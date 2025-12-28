@@ -23,6 +23,8 @@ function LoginLayout() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
+    const [honeyPot, setHoneyPot] = useState("")
+
     const {executeRecaptcha} = useGoogleReCaptcha()
 
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "/"
@@ -36,7 +38,11 @@ function LoginLayout() {
         e.preventDefault()
         setError("")
 
-        const emailError = validateEmail(email)
+        if (honeyPot) return
+
+        const cleanEmail = email.trim()
+
+        const emailError = validateEmail(cleanEmail)
         if (emailError) {
             setError(emailError.message)
             return
@@ -57,10 +63,14 @@ function LoginLayout() {
 
         try {
             const recaptchaToken = await executeRecaptcha("login")
-            await login(email, password, recaptchaToken)
+            await login(cleanEmail, password, recaptchaToken)
             router.push("/dashboard")
-        } catch (err) {
-            setError("Email atau password salah")
+        } catch (err: any) {
+            if (err?.response?.status === 429 || err?.message?.includes("too many")) {
+                setError("Terlalu banyak percobaan login. Mohon tunggu beberapa saat.")
+            } else {
+                setError("Email atau password salah")
+            }
         } finally {
             setLoading(false)
         }
@@ -122,11 +132,24 @@ function LoginLayout() {
                                 </div>
                             )}
 
-                            <form onSubmit={handleSubmit} className="space-y-5">
+                            <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
+                                <div className="hidden opacity-0 absolute -z-10 w-0 h-0 overflow-hidden">
+                                    <input
+                                        type="text"
+                                        name="honey_input_field"
+                                        tabIndex={-1}
+                                        autoComplete="off"
+                                        value={honeyPot}
+                                        onChange={(e) => setHoneyPot(e.target.value)}
+                                    />
+                                </div>
+
                                 <div>
                                     <label
                                         className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Email</label>
                                     <Input
+                                        id="email"
+                                        name="email"
                                         type="email"
                                         placeholder="nama@email.com"
                                         value={email}
@@ -134,6 +157,8 @@ function LoginLayout() {
                                         disabled={loading}
                                         className="h-11 w-full bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 focus:border-orange-500 focus:ring-orange-500 transition-all"
                                         required
+                                        autoComplete="username"
+                                        maxLength={100}
                                     />
                                 </div>
                                 <div>
@@ -143,6 +168,8 @@ function LoginLayout() {
                                     </div>
                                     <div className="relative">
                                         <Input
+                                            id="password"
+                                            name="password"
                                             type={showPassword ? "text" : "password"}
                                             placeholder="••••••••"
                                             value={password}
@@ -150,6 +177,8 @@ function LoginLayout() {
                                             disabled={loading}
                                             className="h-11 w-full bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 focus:border-orange-500 focus:ring-orange-500 pr-10 transition-all"
                                             required
+                                            autoComplete="current-password"
+                                            maxLength={128}
                                         />
                                         <button
                                             type="button"

@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { heroSlidesApi, storageApi } from "@/lib/api-client"
+import type { EntityType } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,20 +20,16 @@ import {
     Image as ImageIcon,
     UploadCloud
 } from "lucide-react"
+
 interface HeroSlideFormProps {
     slideId?: string
+    entityType: EntityType
     onClose: () => void
 }
 
-interface HeroSlide {
-    id: string
-    image_url: string
-    order_index: number
-    is_active: boolean
-}
-
-export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
+export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormProps) {
     const [formData, setFormData] = useState({
+        entity_type: entityType,
         image_url: "",
         order_index: 1,
         is_active: true,
@@ -48,11 +45,18 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
     const isEditMode = !!slideId
 
     useEffect(() => {
+        if (!slideId) {
+            setFormData(prev => ({ ...prev, entity_type: entityType }))
+        }
+    }, [entityType, slideId])
+
+    useEffect(() => {
         if (isEditMode) {
             const fetchSlide = async () => {
                 try {
-                    const data: HeroSlide = await heroSlidesApi.getById(slideId)
+                    const data = await heroSlidesApi.getById(slideId)
                     setFormData({
+                        entity_type: data.entity_type,
                         image_url: data.image_url,
                         order_index: data.order_index,
                         is_active: data.is_active,
@@ -117,9 +121,8 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
             }
 
             const payload = {
+                ...formData,
                 image_url: uploadedUrl,
-                order_index: formData.order_index,
-                is_active: formData.is_active,
             }
 
             if (isEditMode) {
@@ -167,7 +170,7 @@ export function HeroSlideForm({ slideId, onClose }: HeroSlideFormProps) {
                                 {isEditMode ? "Edit Hero Slide" : "Tambah Hero Slide"}
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Upload gambar banner utama untuk halaman beranda.
+                                Upload gambar banner utama untuk halaman beranda <span className="capitalize font-semibold text-orange-600">{entityType}</span>.
                             </p>
                         </div>
                     </div>

@@ -1,7 +1,9 @@
 "use client"
 
 import {useState, useEffect} from "react"
-import type {Facility} from "@/lib/types"
+import {useSearchParams, useRouter} from "next/navigation"
+import Image from "next/image"
+import type {Facility, EntityType} from "@/lib/types"
 import {facilitiesApi, storageApi} from "@/lib/api-client"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
@@ -20,6 +22,7 @@ import {
     RotateCcw,
     ExternalLink,
     X,
+    Building2,
 } from "lucide-react"
 import {FacilityForm} from "./facilities-form"
 import {showConfirmAlert, showSuccessAlert, showErrorAlert} from "@/lib/sweet-alert"
@@ -36,8 +39,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function FacilitiesList() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
+    const queryType = searchParams.get("type") as EntityType | null
+    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
+        ? queryType
+        : "pura"
+
+    const [entityType, setEntityType] = useState<EntityType>(defaultType)
     const [facilities, setFacilities] = useState<Facility[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -46,17 +59,21 @@ export function FacilitiesList() {
     const [page, setPage] = useState(1)
 
     const [previewImage, setPreviewImage] = useState<string | null>(null)
-
     const [zoom, setZoom] = useState(1)
-
     const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
     const limit = 6
 
+    useEffect(() => {
+        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
+            setEntityType(queryType)
+        }
+    }, [queryType])
+
     const fetchFacilities = async () => {
         try {
             setLoading(true)
-            const data = await facilitiesApi.getAll()
+            const data = await facilitiesApi.getAll(entityType)
             setFacilities(data || [])
         } catch (error) {
             console.error("Failed to fetch facilities:", error)
@@ -67,11 +84,16 @@ export function FacilitiesList() {
 
     useEffect(() => {
         fetchFacilities()
-    }, [])
+    }, [entityType])
 
     useEffect(() => {
         setPage(1)
-    }, [searchQuery])
+    }, [searchQuery, entityType])
+
+    const handleTabChange = (type: EntityType) => {
+        setEntityType(type)
+        router.push(`?type=${type}`, { scroll: false })
+    }
 
     const handleDelete = async (id: string, imageUrl: string) => {
         const result = await showConfirmAlert(
@@ -116,18 +138,40 @@ export function FacilitiesList() {
     const totalPages = Math.ceil(filteredFacilities.length / limit)
 
     if (showForm || editingId) {
-        return <FacilityForm facilityId={editingId || undefined} onClose={handleFormClose}/>
+        return <FacilityForm facilityId={editingId || undefined} entityType={entityType} onClose={handleFormClose}/>
     }
 
     return (
         <div className="space-y-6">
+
+            {!queryType && (
+                <div className="flex flex-wrap gap-2">
+                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => handleTabChange(type)}
+                            className={cn(
+                                "capitalize transition-all",
+                                entityType === type
+                                    ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                    : "hover:text-orange-600 hover:border-orange-200"
+                            )}
+                        >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {type}
+                        </Button>
+                    ))}
+                </div>
+            )}
+
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
                 <div
                     className="p-5 bg-background/50 backdrop-blur-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
                     <div className="relative w-full sm:w-96">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
                         <Input
-                            placeholder="Cari nama fasilitas..."
+                            placeholder={`Cari fasilitas ${entityType}...`}
                             className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -170,12 +214,12 @@ export function FacilitiesList() {
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                     <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                        Tidak ada fasilitas yang cocok dengan "{searchQuery}" atau belum ada data.
+                        Tidak ada fasilitas untuk <strong>{entityType}</strong> yang cocok dengan "{searchQuery}" atau belum ada data.
                     </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginated.map((facility) => (
+                    {paginated.map((facility, index) => (
                         <div
                             key={facility.id}
                             className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
@@ -191,10 +235,13 @@ export function FacilitiesList() {
                             >
                                 {facility.image_url ? (
                                     <>
-                                        <img
+                                        <Image
                                             src={facility.image_url}
                                             alt={facility.name}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                            priority={index < 4}
                                         />
 
                                         <div

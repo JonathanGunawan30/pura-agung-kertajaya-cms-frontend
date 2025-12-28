@@ -3,6 +3,7 @@
 import type React from "react"
 import {useState, useEffect} from "react"
 import {activitiesApi} from "@/lib/api-client"
+import type {EntityType} from "@/lib/types"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {Textarea} from "@/components/ui/textarea"
@@ -23,11 +24,13 @@ import {
 
 interface ActivityFormProps {
     activityId?: string
+    entityType: EntityType
     onClose: () => void
 }
 
-export function ActivityForm({activityId, onClose}: ActivityFormProps) {
+export function ActivityForm({activityId, entityType, onClose}: ActivityFormProps) {
     const [formData, setFormData] = useState({
+        entity_type: entityType,
         title: "",
         description: "",
         time_info: "",
@@ -39,11 +42,25 @@ export function ActivityForm({activityId, onClose}: ActivityFormProps) {
     const [error, setError] = useState("")
 
     useEffect(() => {
+        if (!activityId) {
+            setFormData(prev => ({...prev, entity_type: entityType}))
+        }
+    }, [entityType, activityId])
+
+    useEffect(() => {
         if (activityId) {
             const fetchActivity = async () => {
                 try {
                     const data = await activitiesApi.getById(activityId)
-                    setFormData(data)
+                    setFormData({
+                        entity_type: data.entity_type,
+                        title: data.title,
+                        description: data.description,
+                        time_info: data.time_info,
+                        location: data.location,
+                        order_index: data.order_index,
+                        is_active: data.is_active,
+                    })
                 } catch (err) {
                     setError("Gagal memuat data kegiatan.")
                 }
@@ -100,7 +117,9 @@ export function ActivityForm({activityId, onClose}: ActivityFormProps) {
                                 {activityId ? "Edit Kegiatan" : "Tambah Kegiatan Baru"}
                             </h2>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Isi detail informasi kegiatan Pura di bawah ini. Pastikan data akurat.
+                                Isi detail informasi kegiatan <span
+                                className="capitalize font-semibold text-orange-600">{entityType}</span> di bawah ini.
+                                Pastikan data akurat.
                             </p>
                         </div>
                     </div>
@@ -158,16 +177,24 @@ export function ActivityForm({activityId, onClose}: ActivityFormProps) {
                                 <div className="space-y-5 p-5 bg-muted/20 rounded-lg border">
                                     <div className="space-y-2">
                                         <Label htmlFor="time" className="flex items-center gap-2">
-                                            <Clock className="w-3.5 h-3.5 text-muted-foreground"/> Waktu
+                                            <Clock className="w-3.5 h-3.5 text-muted-foreground"/> Waktu Pelaksanaan
                                         </Label>
                                         <Input
                                             id="time"
                                             value={formData.time_info}
                                             onChange={(e) => setFormData({...formData, time_info: e.target.value})}
-                                            placeholder="Cth: 06:00 - 12:00 WIB"
+                                            placeholder="Masukkan waktu pelaksanaan..."
                                             className="bg-background"
                                             required
                                         />
+                                        <div className="text-[11px] text-muted-foreground pt-1.5">
+                                            <p className="mb-1 font-medium text-foreground/80">Contoh format pengisian (bebas):</p>
+                                            <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
+                                                <li>Setiap Minggu, 08:00 WIB</li>
+                                                <li>Sabtu, 27 Des 2025, 17:00 - 19:00 WIB</li>
+                                                <li>Setiap Hari</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="location" className="flex items-center gap-2">

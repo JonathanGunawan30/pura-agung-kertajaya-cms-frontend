@@ -13,7 +13,7 @@ import type {
     OrganizationMember,
     Facility,
     Remark,
-    OrganizationDetail, EntityType
+    OrganizationDetail, EntityType, Category, Article
 } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
@@ -49,14 +49,14 @@ export const authApi = {
     login: (email: string, password: string, recaptcha_token: string) =>
         apiCall<User>("/api/users/_login", {
             method: "POST",
-            body: JSON.stringify({ email, password, recaptcha_token }),
+            body: JSON.stringify({email, password, recaptcha_token}),
         }),
-    logout: () => apiCall<unknown>("/api/users/_logout", { method: "POST" }),
+    logout: () => apiCall<unknown>("/api/users/_logout", {method: "POST"}),
     getCurrentUser: () => apiCall<User>("/api/users/_current"),
     updateProfile: (name?: string, password?: string) =>
         apiCall<User>("/api/users/_current", {
             method: "PATCH",
-            body: JSON.stringify({ name, password }),
+            body: JSON.stringify({name, password}),
         }),
 }
 
@@ -74,7 +74,7 @@ export const testimonialsApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/testimonials/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/testimonials/${id}`, {method: "DELETE"}),
 }
 
 // Site Identity endpoints
@@ -100,7 +100,7 @@ export const siteIdentityApi = {
         }),
 
     delete: (id: string) =>
-        apiCall<unknown>(`/api/site-identity/${id}`, { method: "DELETE" }),
+        apiCall<unknown>(`/api/site-identity/${id}`, {method: "DELETE"}),
 }
 
 // Hero Slides endpoints
@@ -119,7 +119,7 @@ export const heroSlidesApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/hero-slides/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/hero-slides/${id}`, {method: "DELETE"}),
 }
 
 // Gallery endpoints
@@ -138,7 +138,7 @@ export const galleryApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/galleries/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/galleries/${id}`, {method: "DELETE"}),
 }
 
 // Contact Info endpoints
@@ -157,7 +157,7 @@ export const contactInfoApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/contact-info/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/contact-info/${id}`, {method: "DELETE"}),
 }
 
 // Activities endpoints
@@ -176,7 +176,7 @@ export const activitiesApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/activities/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/activities/${id}`, {method: "DELETE"}),
 }
 
 // Facilities endpoints
@@ -195,7 +195,7 @@ export const facilitiesApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/facilities/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/facilities/${id}`, {method: "DELETE"}),
 }
 
 // About endpoints
@@ -214,7 +214,7 @@ export const aboutApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/about/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/about/${id}`, {method: "DELETE"}),
 }
 
 // Program endpoints
@@ -253,6 +253,18 @@ export const rulesApi = {
         }),
 }
 
+// Organizaton image
+export const organizationImageApi = {
+    get: (entityType: string) =>
+        apiCall<OrganizationDetail>(`/api/organization-details?entity_type=${entityType}`),
+
+    update: (entityType: string, data: any) =>
+        apiCall<OrganizationDetail>(`/api/organization-details?entity_type=${entityType}`, {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
+}
+
 // Organization Members endpoints
 export const organizationMembersApi = {
     getAll: (entityType: string) =>
@@ -269,7 +281,7 @@ export const organizationMembersApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/organization-members/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/organization-members/${id}`, {method: "DELETE"}),
 }
 
 // Remarks endpoints
@@ -288,12 +300,12 @@ export const remarksApi = {
             method: "PUT",
             body: JSON.stringify(data),
         }),
-    delete: (id: string) => apiCall<unknown>(`/api/remarks/${id}`, { method: "DELETE" }),
+    delete: (id: string) => apiCall<unknown>(`/api/remarks/${id}`, {method: "DELETE"}),
 }
 
 // Storage endpoints
 export const storageApi = {
-    upload: async (file: File): Promise<{ url: string; key: string }> => {
+    upload: async (file: File): Promise<{ variants: Record<string, string>; filename: string }> => {
         const formData = new FormData()
         formData.append("file", file)
 
@@ -309,16 +321,53 @@ export const storageApi = {
         }
 
         const data = await response.json()
-        return data.data || data
+        return data.data
     },
+
     delete: (key: string) =>
         apiCall<unknown>(`/api/storage/delete?key=${encodeURIComponent(key)}`, {
             method: "DELETE",
         }),
+
     getPresignedUrl: (key: string, expiration?: number) =>
-        apiCall<string>(
+        apiCall<{ url: string }>(
             `/api/storage/presigned-url?key=${encodeURIComponent(key)}${
                 expiration ? `&expiration=${expiration}` : ""
             }`
         ),
+}
+
+// category endpoint
+
+export const categoriesApi = {
+    getAll: () => apiCall<Category[]>("/api/categories"),
+    getById: (id: string) => apiCall<Category>(`/api/categories/${id}`),
+    create: (data: any) => apiCall<Category>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => apiCall<Category>(`/api/categories/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+    }),
+    delete: (id: string) => apiCall<void>(`/api/categories/${id}`, {
+        method: "DELETE"
+    }),
+}
+
+// article endpoint
+export const articlesApi = {
+    getAll: () => apiCall<Article[]>("/api/articles"),
+    getById: (id: string) => apiCall<Article>(`/api/articles/${id}`),
+    create: (data: any) => apiCall<Article>("/api/articles", {
+        method: "POST",
+        body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => apiCall<Article>(`/api/articles/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data)
+    }),
+    delete: (id: string) => apiCall<void>(`/api/articles/${id}`, {
+        method: "DELETE"
+    }),
 }

@@ -76,7 +76,7 @@ export function GalleryList() {
             const data = await galleryApi.getAll(entityType)
             setItems(data || [])
         } catch (error) {
-            console.error("Failed to fetch gallery items:", error)
+            console.error(error)
         } finally {
             setLoading(false)
         }
@@ -95,16 +95,21 @@ export function GalleryList() {
         router.push(`?type=${type}`, { scroll: false })
     }
 
-    const handleDelete = async (id: string, imageUrl: string) => {
+    const handleDelete = async (id: string, images: any) => {
         const result = await showConfirmAlert("Hapus Galeri", "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan.")
         if (!result.isConfirmed) return
 
         try {
-            if (imageUrl) {
-                const key = imageUrl.split("/").pop()
-                if (key) {
-                    await storageApi.delete(`uploads/${key}`)
-                }
+            if (images && typeof images === 'object') {
+                const urls = Object.values(images) as string[]
+                await Promise.all(urls.map(async (url) => {
+                    if (typeof url === 'string') {
+                        const key = url.split("/").pop()
+                        if (key) {
+                            await storageApi.delete(`uploads/${key}`)
+                        }
+                    }
+                }))
             }
 
             await galleryApi.delete(id)
@@ -213,105 +218,114 @@ export function GalleryList() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginated.map((item, index) => (
-                        <div
-                            key={item.id}
-                            className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
-                        >
+                    {paginated.map((item, index) => {
+                        const images = item.images as any
+                        const thumbnail = images?.md || images?.lg || images?.fhd || images?.original || Object.values(images)[0]
+                        const fullImage = images?.["2xl"] || images?.fhd || images?.xl || images?.original || thumbnail
+                        const blurImage = images?.blur
+
+                        return (
                             <div
-                                className="relative h-52 w-full overflow-hidden bg-muted border-b cursor-zoom-in group/image"
-                                onClick={() => {
-                                    if (item.image_url) {
-                                        setPreviewImage(item.image_url)
-                                        setZoom(1)
-                                    }
-                                }}
+                                key={item.id}
+                                className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
                             >
-                                {item.image_url ? (
-                                    <>
-                                        <Image
-                                            src={item.image_url}
-                                            alt={item.title}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                            priority={index < 4}
-                                        />
+                                <div
+                                    className="relative h-52 w-full overflow-hidden bg-muted border-b cursor-zoom-in group/image"
+                                    onClick={() => {
+                                        if (fullImage) {
+                                            setPreviewImage(fullImage)
+                                            setZoom(1)
+                                        }
+                                    }}
+                                >
+                                    {thumbnail ? (
+                                        <>
+                                            <Image
+                                                src={thumbnail}
+                                                alt={item.title}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                                placeholder={blurImage ? "blur" : "empty"}
+                                                blurDataURL={blurImage}
+                                                priority={index < 4}
+                                            />
 
-                                        <div
-                                            className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
                                             <div
-                                                className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white transform translate-y-2 group-hover/image:translate-y-0 transition-transform">
-                                                <ZoomIn className="w-6 h-6"/>
+                                                className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
+                                                <div
+                                                    className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white transform translate-y-2 group-hover/image:translate-y-0 transition-transform">
+                                                    <ZoomIn className="w-6 h-6"/>
+                                                </div>
                                             </div>
+                                        </>
+                                    ) : (
+                                        <div
+                                            className="w-full h-full flex items-center justify-center text-muted-foreground cursor-default">
+                                            <ImageIcon className="w-12 h-12 opacity-20"/>
                                         </div>
-                                    </>
-                                ) : (
-                                    <div
-                                        className="w-full h-full flex items-center justify-center text-muted-foreground cursor-default">
-                                        <ImageIcon className="w-12 h-12 opacity-20"/>
+                                    )}
+                                </div>
+
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3
+                                            className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-orange-600 transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                if (fullImage) {
+                                                    setPreviewImage(fullImage)
+                                                    setZoom(1)
+                                                }
+                                            }}
+                                        >
+                                            {item.title}
+                                        </h3>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 -mr-2 -mt-1 text-muted-foreground hover:text-orange-600"
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4"/>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-40">
+                                                <DropdownMenuItem
+                                                    onClick={() => setEditingId(item.id)}
+                                                    className="cursor-pointer"
+                                                >
+                                                    <Edit2 className="mr-2 h-3.5 w-3.5"/> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(item.id, item.images)}
+                                                    className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
+                                                >
+                                                    <Trash2 className="mr-2 h-3.5 w-3.5"/> Hapus
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="p-5 flex-1 flex flex-col">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3
-                                        className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-orange-600 transition-colors cursor-pointer"
-                                        onClick={() => {
-                                            if (item.image_url) {
-                                                setPreviewImage(item.image_url)
-                                                setZoom(1)
-                                            }
-                                        }}
-                                    >
-                                        {item.title}
-                                    </h3>
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 -mr-2 -mt-1 text-muted-foreground hover:text-orange-600"
-                                            >
-                                                <MoreHorizontal className="h-4 w-4"/>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40">
-                                            <DropdownMenuItem
-                                                onClick={() => setEditingId(item.id)}
-                                                className="cursor-pointer"
-                                            >
-                                                <Edit2 className="mr-2 h-3.5 w-3.5"/> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleDelete(item.id, item.image_url)}
-                                                className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
-                                            >
-                                                <Trash2 className="mr-2 h-3.5 w-3.5"/> Hapus
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                        {item.description}
+                                    </p>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                                    {item.description}
-                                </p>
-                            </div>
-
-                            <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                    <LayoutList className="w-3.5 h-3.5"/>
-                                    <span>
+                                <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                                        <LayoutList className="w-3.5 h-3.5"/>
+                                        <span>
                                         Urutan:{" "}
-                                        <span className="text-foreground font-semibold">{item.order_index}</span>
+                                            <span className="text-foreground font-semibold">{item.order_index}</span>
                                     </span>
+                                    </div>
+                                    <StatusBadge isActive={item.is_active}/>
                                 </div>
-                                <StatusBadge isActive={item.is_active}/>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
 

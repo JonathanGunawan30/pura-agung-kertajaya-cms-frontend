@@ -25,7 +25,10 @@ import {
     Armchair,
     ClipboardList,
     Target,
-    ScrollText
+    ScrollText,
+    Globe,
+    FileText,
+    Tags
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Image from "next/image"
@@ -61,14 +64,13 @@ const menuGroups: MenuGroup[] = [
         dotClass: "bg-orange-600",
         hoverClass: "hover:bg-orange-50/50 hover:text-orange-700 dark:hover:bg-orange-950/30",
         items: [
-            { href: "/dashboard/activities", label: "Kegiatan Pura", icon: Calendar, typeParam: "pura" },
+            { href: "/dashboard/activities", label: "Aktivitas", icon: Calendar, typeParam: "pura" },
             { href: "/dashboard/gallery", label: "Galeri Foto", icon: Layers, typeParam: "pura" },
             { href: "/dashboard/hero-slides", label: "Hero Slides", icon: ImageIcon, typeParam: "pura" },
-            { href: "/dashboard/testimonials", label: "Testimoni Umat", icon: MessageSquare, typeParam: "pura" },
             { href: "/dashboard/remarks", label: "Kata Sambutan", icon: MessageSquareQuote, typeParam: "pura" },
             { href: "/dashboard/organization", label: "Struktur Organisasi", icon: Users, typeParam: "pura" },
             { href: "/dashboard/facilities", label: "Fasilitas", icon: Armchair, typeParam: "pura" },
-            { href: "/dashboard/rules", label: "Tata Tertib", icon: ScrollText, typeParam: "pura" },
+            // { href: "/dashboard/rules", label: "Tata Tertib", icon: ScrollText, typeParam: "pura" },
             { href: "/dashboard/about", label: "Tentang Pura", icon: Info, typeParam: "pura" },
             { href: "/dashboard/contact-info", label: "Kontak & Lokasi", icon: MapPin, typeParam: "pura" },
             { href: "/dashboard/site-identity", label: "Identitas Web", icon: Settings, typeParam: "pura" },
@@ -84,10 +86,12 @@ const menuGroups: MenuGroup[] = [
         dotClass: "bg-blue-600",
         hoverClass: "hover:bg-blue-50/50 hover:text-blue-700 dark:hover:bg-blue-950/30",
         items: [
+            { href: "/dashboard/activities", label: "Aktivitas", icon: Calendar, typeParam: "yayasan" },
             { href: "/dashboard/gallery", label: "Galeri Foto", icon: Layers, typeParam: "yayasan" },
             { href: "/dashboard/hero-slides", label: "Hero Slides", icon: ImageIcon, typeParam: "yayasan" },
             { href: "/dashboard/programs", label: "Proker", icon: ClipboardList, typeParam: "yayasan" },
             { href: "/dashboard/vision-mission", label: "Visi & Misi", icon: Target, typeParam: "yayasan" },
+            { href: "/dashboard/facilities", label: "Fasilitas Yayasan", icon: Armchair, typeParam: "yayasan" },
             { href: "/dashboard/remarks", label: "Kata Sambutan", icon: MessageSquareQuote, typeParam: "yayasan" },
             { href: "/dashboard/organization", label: "Struktur Organisasi", icon: Users, typeParam: "yayasan" },
             { href: "/dashboard/about", label: "Tentang Yayasan", icon: Info, typeParam: "yayasan" },
@@ -105,7 +109,7 @@ const menuGroups: MenuGroup[] = [
         dotClass: "bg-emerald-600",
         hoverClass: "hover:bg-emerald-50/50 hover:text-emerald-700 dark:hover:bg-emerald-950/30",
         items: [
-            { href: "/dashboard/activities", label: "Kegiatan Pasraman", icon: Calendar, typeParam: "pasraman" },
+            { href: "/dashboard/activities", label: "Aktivitas", icon: Calendar, typeParam: "pasraman" },
             { href: "/dashboard/gallery", label: "Galeri Foto", icon: Layers, typeParam: "pasraman" },
             { href: "/dashboard/hero-slides", label: "Hero Slides", icon: ImageIcon, typeParam: "pasraman" },
             { href: "/dashboard/remarks", label: "Kata Sambutan", icon: MessageSquareQuote, typeParam: "pasraman" },
@@ -117,6 +121,28 @@ const menuGroups: MenuGroup[] = [
             { href: "/dashboard/site-identity", label: "Identitas Web", icon: Settings, typeParam: "pasraman" },
         ],
     },
+    {
+        title: "Global & Umum",
+        key: "global",
+        icon: Globe,
+        themeColor: "text-orange-600",
+        activeBg: "bg-orange-50 dark:bg-orange-900/20",
+        activeText: "text-orange-700 dark:text-orange-400",
+        dotClass: "bg-orange-600",
+        hoverClass: "hover:bg-orange-50/50 hover:text-orange-700 dark:hover:bg-orange-950/30",
+        items: [
+            {
+                href: "/dashboard/articles",
+                label: "Artikel & Berita",
+                icon: FileText
+            },
+            {
+                href: "/dashboard/categories",
+                label: "Kategori Artikel",
+                icon: Tags
+            },
+        ],
+    },
 ]
 
 export function Sidebar() {
@@ -126,15 +152,18 @@ export function Sidebar() {
     const { logout, user } = useAuth()
 
     const [isOpen, setIsOpen] = useState(false)
-    const [activeGroupKey, setActiveGroupKey] = useState<string>("pura")
+    const [activeGroupKey, setActiveGroupKey] = useState<string>("")
 
     useEffect(() => {
         const typeParam = searchParams.get("type") || searchParams.get("entity_type")
-
-        if (typeParam && ["pura", "yayasan", "pasraman"].includes(typeParam)) {
-            setActiveGroupKey(typeParam)
-        } else if (pathname.includes("site-identity")) {
+        if (pathname.includes("/dashboard/articles") || pathname.includes("/dashboard/categories")) {
             setActiveGroupKey("global")
+        }
+        else if (typeParam && ["pura", "yayasan", "pasraman"].includes(typeParam)) {
+            setActiveGroupKey(typeParam)
+        }
+        else {
+            setActiveGroupKey("")
         }
     }, [searchParams, pathname])
 
@@ -144,7 +173,7 @@ export function Sidebar() {
     }
 
     const toggleGroup = (key: string) => {
-        setActiveGroupKey(key)
+        setActiveGroupKey((prev) => (prev === key ? "" : key))
     }
 
     const isLinkActive = (item: MenuItem) => {

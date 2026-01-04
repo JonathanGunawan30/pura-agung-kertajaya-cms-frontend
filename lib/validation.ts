@@ -28,7 +28,7 @@ export function validateNumber(value: number, fieldName: string, min?: number, m
   return null
 }
 
-export function validateFile(file: File | null, fieldName: string, maxSizeMB = 2): ValidationError | null {
+export function validateFile(file: File | null, fieldName: string, maxSizeMB = 10): ValidationError | null {
   if (!file) return { field: fieldName, message: `${fieldName} is required` }
   const maxSizeBytes = maxSizeMB * 1024 * 1024
   if (file.size > maxSizeBytes) return { field: fieldName, message: `${fieldName} must be less than ${maxSizeMB}MB` }

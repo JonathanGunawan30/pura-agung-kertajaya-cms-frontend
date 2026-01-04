@@ -11,7 +11,7 @@ import {Switch} from "@/components/ui/switch"
 import {CardContent} from "@/components/ui/card"
 import {validateFile} from "@/lib/validation"
 import {showSuccessAlert, showErrorAlert} from "@/lib/sweet-alert"
-import type {Facility, EntityType} from "@/lib/types"
+import type {EntityType} from "@/lib/types"
 
 import {
     ArrowLeft,
@@ -29,28 +29,18 @@ interface FacilityFormProps {
     onClose: () => void
 }
 
-type FacilityFormData = {
-    entity_type: EntityType
-    name: string
-    description: string
-    image_url: string
-    order_index: number
-    is_active: boolean
-}
-
 export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProps) {
-    const [formData, setFormData] = useState<FacilityFormData>({
+    const [formData, setFormData] = useState({
         entity_type: entityType,
         name: "",
         description: "",
-        image_url: "",
+        images: null as any,
         order_index: 1,
         is_active: true,
     })
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string>("")
-    const [oldImageUrl, setOldImageUrl] = useState<string>("")
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -66,17 +56,23 @@ export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProp
         if (isEditMode) {
             const fetchFacility = async () => {
                 try {
-                    const data: Facility = await facilitiesApi.getById(facilityId)
+                    const data = await facilitiesApi.getById(facilityId)
                     setFormData({
                         entity_type: data.entity_type,
                         name: data.name,
                         description: data.description,
-                        image_url: data.image_url,
+                        images: data.images,
                         order_index: data.order_index,
                         is_active: data.is_active,
                     })
-                    setOldImageUrl(data.image_url)
-                    setPreviewUrl(data.image_url)
+
+                    const imgs = data.images as any
+                    if (imgs) {
+                        const url = imgs.fhd || imgs["2xl"] || imgs.xl || imgs.lg || imgs.md || Object.values(imgs)[0]
+                        if (typeof url === 'string') {
+                            setPreviewUrl(url)
+                        }
+                    }
                 } catch (err) {
                     setError("Gagal memuat data fasilitas.")
                 }
@@ -102,7 +98,7 @@ export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProp
         const file = e.target.files?.[0]
         if (!file) return
 
-        const fileError = validateFile(file, "Image", 2)
+        const fileError = validateFile(file, "Image", 10)
         if (fileError) {
             setError(fileError.message)
             return
@@ -120,21 +116,27 @@ export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProp
         setLoading(true)
 
         try {
-            let uploadedUrl = formData.image_url
+            let finalImages = formData.images || {}
 
             if (selectedFile) {
-                const uploadResult = await storageApi.upload(selectedFile)
-                uploadedUrl = uploadResult.url
+                const uploadResponse = await storageApi.upload(selectedFile)
+                const backendVariants = uploadResponse.variants
 
-                if (isEditMode && oldImageUrl && oldImageUrl !== uploadedUrl) {
-                    const key = oldImageUrl.split("/").pop()
-                    if (key) await storageApi.delete(`uploads/${key}`)
-                }
+                const fullUrlImages: Record<string, string> = {}
+                const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
+
+                Object.keys(backendVariants).forEach((key) => {
+                    const path = backendVariants[key]
+                    const cleanPath = path.startsWith("/") ? path.substring(1) : path
+                    fullUrlImages[key] = `${baseUrl}${cleanPath}`
+                })
+
+                finalImages = fullUrlImages
             }
 
             const payload = {
                 ...formData,
-                image_url: uploadedUrl,
+                images: finalImages,
             }
 
             if (isEditMode) {
@@ -249,7 +251,7 @@ export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProp
                                                 <p className="text-sm font-medium text-foreground">Klik untuk upload
                                                     foto</p>
                                                 <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max
-                                                    2MB)</p>
+                                                    10MB)</p>
                                                 <input
                                                     type="file"
                                                     accept="image/*"
@@ -313,7 +315,7 @@ export function FacilityForm({facilityId, entityType, onClose}: FacilityFormProp
                                             value={formData.order_index}
                                             onChange={(e) => setFormData({
                                                 ...formData,
-                                                order_index: Number.parseInt(e.target.value) || 1
+                                                order_index: Number(e.target.value) || 1
                                             })}
                                             className="bg-background"
                                             required

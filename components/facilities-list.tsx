@@ -76,7 +76,7 @@ export function FacilitiesList() {
             const data = await facilitiesApi.getAll(entityType)
             setFacilities(data || [])
         } catch (error) {
-            console.error("Failed to fetch facilities:", error)
+            console.error(error)
         } finally {
             setLoading(false)
         }
@@ -95,7 +95,7 @@ export function FacilitiesList() {
         router.push(`?type=${type}`, { scroll: false })
     }
 
-    const handleDelete = async (id: string, imageUrl: string) => {
+    const handleDelete = async (id: string, images: any) => {
         const result = await showConfirmAlert(
             "Hapus Fasilitas",
             "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan."
@@ -104,18 +104,22 @@ export function FacilitiesList() {
         if (!result.isConfirmed) return
 
         try {
-            if (imageUrl) {
-                const key = imageUrl.split("/").pop()
-                if (key) {
-                    await storageApi.delete(`uploads/${key}`)
-                }
+            if (images && typeof images === 'object') {
+                const urls = Object.values(images) as string[]
+                await Promise.all(urls.map(async (url) => {
+                    if (typeof url === 'string') {
+                        const key = url.split("/").pop()
+                        if (key) {
+                            await storageApi.delete(`uploads/${key}`)
+                        }
+                    }
+                }))
             }
 
             await facilitiesApi.delete(id)
             setFacilities((prev) => prev.filter((f) => f.id !== id))
             await showSuccessAlert("Terhapus!", "Fasilitas berhasil dihapus.")
         } catch (error) {
-            console.error("Failed to delete facility:", error)
             const errorMsg = error instanceof Error ? error.message : "Gagal menghapus fasilitas"
             await showErrorAlert("Error", errorMsg)
         }
@@ -219,105 +223,114 @@ export function FacilitiesList() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginated.map((facility, index) => (
-                        <div
-                            key={facility.id}
-                            className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
-                        >
+                    {paginated.map((facility, index) => {
+                        const images = facility.images as any
+                        const thumbnail = images?.md || images?.lg || images?.fhd || images?.original || Object.values(images)[0]
+                        const fullImage = images?.["2xl"] || images?.fhd || images?.xl || images?.original || thumbnail
+                        const blurImage = images?.blur
+
+                        return (
                             <div
-                                className="relative h-52 w-full overflow-hidden bg-muted border-b cursor-zoom-in group/image"
-                                onClick={() => {
-                                    if (facility.image_url) {
-                                        setPreviewImage(facility.image_url)
-                                        setZoom(1)
-                                    }
-                                }}
+                                key={facility.id}
+                                className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full"
                             >
-                                {facility.image_url ? (
-                                    <>
-                                        <Image
-                                            src={facility.image_url}
-                                            alt={facility.name}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                            priority={index < 4}
-                                        />
+                                <div
+                                    className="relative h-52 w-full overflow-hidden bg-muted border-b cursor-zoom-in group/image"
+                                    onClick={() => {
+                                        if (fullImage) {
+                                            setPreviewImage(fullImage)
+                                            setZoom(1)
+                                        }
+                                    }}
+                                >
+                                    {thumbnail ? (
+                                        <>
+                                            <Image
+                                                src={thumbnail}
+                                                alt={facility.name}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                                placeholder={blurImage ? "blur" : "empty"}
+                                                blurDataURL={blurImage}
+                                                priority={index < 4}
+                                            />
 
-                                        <div
-                                            className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
                                             <div
-                                                className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white transform translate-y-2 group-hover/image:translate-y-0 transition-transform">
-                                                <ZoomIn className="w-6 h-6"/>
+                                                className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
+                                                <div
+                                                    className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white transform translate-y-2 group-hover/image:translate-y-0 transition-transform">
+                                                    <ZoomIn className="w-6 h-6"/>
+                                                </div>
                                             </div>
+                                        </>
+                                    ) : (
+                                        <div
+                                            className="w-full h-full flex items-center justify-center text-muted-foreground cursor-default">
+                                            <ImageIcon className="w-12 h-12 opacity-20"/>
                                         </div>
-                                    </>
-                                ) : (
-                                    <div
-                                        className="w-full h-full flex items-center justify-center text-muted-foreground cursor-default">
-                                        <ImageIcon className="w-12 h-12 opacity-20"/>
+                                    )}
+                                </div>
+
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3
+                                            className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-orange-600 transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                if (fullImage) {
+                                                    setPreviewImage(fullImage)
+                                                    setZoom(1)
+                                                }
+                                            }}
+                                        >
+                                            {facility.name}
+                                        </h3>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 -mr-2 -mt-1 text-muted-foreground hover:text-orange-600"
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4"/>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-40">
+                                                <DropdownMenuItem
+                                                    onClick={() => setEditingId(facility.id)}
+                                                    className="cursor-pointer"
+                                                >
+                                                    <Edit2 className="mr-2 h-3.5 w-3.5"/> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(facility.id, facility.images)}
+                                                    className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
+                                                >
+                                                    <Trash2 className="mr-2 h-3.5 w-3.5"/> Hapus
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="p-5 flex-1 flex flex-col">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3
-                                        className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-orange-600 transition-colors cursor-pointer"
-                                        onClick={() => {
-                                            if (facility.image_url) {
-                                                setPreviewImage(facility.image_url)
-                                                setZoom(1)
-                                            }
-                                        }}
-                                    >
-                                        {facility.name}
-                                    </h3>
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 -mr-2 -mt-1 text-muted-foreground hover:text-orange-600"
-                                            >
-                                                <MoreHorizontal className="h-4 w-4"/>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-40">
-                                            <DropdownMenuItem
-                                                onClick={() => setEditingId(facility.id)}
-                                                className="cursor-pointer"
-                                            >
-                                                <Edit2 className="mr-2 h-3.5 w-3.5"/> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleDelete(facility.id, facility.image_url)}
-                                                className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
-                                            >
-                                                <Trash2 className="mr-2 h-3.5 w-3.5"/> Hapus
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                        {facility.description}
+                                    </p>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                                    {facility.description}
-                                </p>
-                            </div>
-
-                            <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                    <LayoutList className="w-3.5 h-3.5"/>
-                                    <span>
+                                <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                                        <LayoutList className="w-3.5 h-3.5"/>
+                                        <span>
                                         Urutan:{" "}
-                                        <span className="text-foreground font-semibold">{facility.order_index}</span>
+                                            <span className="text-foreground font-semibold">{facility.order_index}</span>
                                     </span>
+                                    </div>
+                                    <StatusBadge isActive={facility.is_active}/>
                                 </div>
-                                <StatusBadge isActive={facility.is_active}/>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
 
@@ -431,7 +444,7 @@ export function FacilitiesList() {
                                 e.stopPropagation()
                                 setZoom(zoom === 1 ? 2 : 1)
                             }}
-                            onClick={(e) => e.stopPropagation()} // Prevent close on image click
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 
@@ -443,6 +456,7 @@ export function FacilitiesList() {
                     </div>
                 </div>
             )}
+
         </div>
     )
 }
@@ -463,7 +477,7 @@ function StatusBadge({isActive}: { isActive: boolean }) {
                         `}
                     >
                         {isActive ? <Eye className="w-3 h-3"/> : <EyeOff className="w-3 h-3"/>}
-                        {isActive ? "Active" : "Inactive"}
+                        {isActive ? "Active" : "Hidden"}
                     </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="bg-foreground text-background text-xs">

@@ -30,14 +30,13 @@ interface HeroSlideFormProps {
 export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormProps) {
     const [formData, setFormData] = useState({
         entity_type: entityType,
-        image_url: "",
+        images: null as any,
         order_index: 1,
         is_active: true,
     })
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string>("")
-    const [oldImageUrl, setOldImageUrl] = useState<string>("")
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -57,13 +56,18 @@ export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormPro
                     const data = await heroSlidesApi.getById(slideId)
                     setFormData({
                         entity_type: data.entity_type,
-                        image_url: data.image_url,
+                        images: data.images,
                         order_index: data.order_index,
                         is_active: data.is_active,
                     })
 
-                    setOldImageUrl(data.image_url)
-                    setPreviewUrl(data.image_url)
+                    const imgs = data.images as any
+                    if (imgs) {
+                        const url = imgs.fhd || imgs["2xl"] || imgs.xl || imgs.lg || imgs.md || Object.values(imgs)[0]
+                        if (typeof url === 'string') {
+                            setPreviewUrl(url)
+                        }
+                    }
                 } catch (err) {
                     const msg = "Gagal memuat data slide."
                     setError(msg)
@@ -88,7 +92,7 @@ export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormPro
         const file = e.target.files?.[0]
         if (!file) return
 
-        const validationError = validateFile(file, "Image", 2)
+        const validationError = validateFile(file, "Image", 10)
         if (validationError) {
             setError(validationError.message)
             return
@@ -108,21 +112,29 @@ export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormPro
         setLoading(true)
 
         try {
-            let uploadedUrl = formData.image_url
+            let finalImages = formData.images || {}
 
             if (selectedFile) {
-                const uploadResult = await storageApi.upload(selectedFile)
-                uploadedUrl = uploadResult.url
+                const uploadResponse = await storageApi.upload(selectedFile)
+                const backendVariants = uploadResponse.variants
 
-                if (isEditMode && oldImageUrl && oldImageUrl !== uploadedUrl) {
-                    const key = oldImageUrl.split("/").pop()
-                    if (key) await storageApi.delete(`uploads/${key}`)
-                }
+                const fullUrlImages: Record<string, string> = {}
+                const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
+
+                Object.keys(backendVariants).forEach((key) => {
+                    const path = backendVariants[key]
+                    const cleanPath = path.startsWith("/") ? path.substring(1) : path
+                    fullUrlImages[key] = `${baseUrl}${cleanPath}`
+                })
+
+                finalImages = fullUrlImages
             }
 
             const payload = {
-                ...formData,
-                image_url: uploadedUrl,
+                entity_type: formData.entity_type,
+                order_index: formData.order_index,
+                is_active: formData.is_active,
+                images: finalImages,
             }
 
             if (isEditMode) {
@@ -225,7 +237,7 @@ export function HeroSlideForm({ slideId, entityType, onClose }: HeroSlideFormPro
                                                 <UploadCloud className="w-10 h-10" />
                                             </div>
                                             <p className="text-sm font-medium text-foreground">Klik untuk upload foto banner</p>
-                                            <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 2MB)</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 10MB)</p>
                                             <input
                                                 type="file"
                                                 accept="image/*"

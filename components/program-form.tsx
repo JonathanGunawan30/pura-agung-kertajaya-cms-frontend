@@ -17,7 +17,8 @@ import {
     ClipboardList,
     Edit2 as EditIcon,
     ImageIcon,
-    UploadCloud
+    UploadCloud,
+    Info
 } from "lucide-react"
 
 interface ProgramFormProps {
@@ -37,11 +38,30 @@ export function ProgramForm({ initialData, entityType, onClose }: ProgramFormPro
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
 
+    const handleCleanupStorage = async (url: string) => {
+        if (!url) return
+        try {
+            const filenameWithExt = url.split("/").pop() || ""
+            const baseName = filenameWithExt.replace(/_(xs|sm|md|lg|xl|2xl|fhd|thumb|avatar|original|blur)\./, ".")
+            const parts = baseName.split('.')
+            const ext = parts.pop()
+            const nameNoExt = parts.join('.')
+
+            const variants = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'fhd', 'thumb', 'avatar', 'original', 'blur']
+
+            await Promise.all(variants.map(v =>
+                storageApi.delete(`uploads/${nameNoExt}_${v}.${ext}`).catch(() => null)
+            ))
+        } catch (err) {
+            console.error("Cleanup failed", err)
+        }
+    }
+
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
 
-        const errorCheck = validateFile(file, "Image", 2)
+        const errorCheck = validateFile(file, "Image", 5) // Batas 5MB sesuai standar baru kita
         if (errorCheck) {
             setError(errorCheck.message)
             return
@@ -59,15 +79,21 @@ export function ProgramForm({ initialData, entityType, onClose }: ProgramFormPro
 
         try {
             let finalImageUrl = formData.work_program_image_url
+            const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
 
             if (selectedFile) {
-                const uploaded = await storageApi.upload(selectedFile)
-                finalImageUrl = uploaded.url
+                const uploadResult = await storageApi.upload(selectedFile)
+                const variants = uploadResult.variants
 
-                if (initialData?.work_program_image_url && initialData.work_program_image_url !== finalImageUrl) {
-                    const key = initialData.work_program_image_url.split("/").pop()
-                    if (key) await storageApi.delete(`uploads/${key}`)
+                const selectedPath = variants.lg || variants.md || variants.fhd || Object.values(variants)[0] as string
+                const cleanPath = selectedPath.startsWith("/") ? selectedPath.substring(1) : selectedPath
+                const newImageUrl = `${baseUrl}${cleanPath}`
+
+                if (initialData?.work_program_image_url && initialData.work_program_image_url !== newImageUrl) {
+                    await handleCleanupStorage(initialData.work_program_image_url)
                 }
+
+                finalImageUrl = newImageUrl
             }
 
             const payload = {
@@ -107,7 +133,7 @@ export function ProgramForm({ initialData, entityType, onClose }: ProgramFormPro
 
                 <div className="bg-muted/30 border-b p-6">
                     <div className="flex items-start gap-4">
-                        <div className="p-2.5 rounded-lg border shadow-sm bg-blue-50 text-blue-600 border-blue-100">
+                        <div className="p-2.5 rounded-lg border shadow-sm bg-orange-50 text-orange-600 border-orange-100">
                             <EditIcon className="w-5 h-5"/>
                         </div>
 
@@ -160,19 +186,20 @@ export function ProgramForm({ initialData, entityType, onClose }: ProgramFormPro
                                                 <UploadCloud className="w-8 h-8" />
                                             </div>
                                             <p className="text-sm font-medium">Klik untuk upload foto</p>
-                                            <p className="text-xs text-muted-foreground mt-1 text-center">Format: JPG, PNG<br/>(Max 2MB)</p>
+                                            <p className="text-xs text-muted-foreground mt-1 text-center">Format: JPG, PNG<br/>(Max 5MB)</p>
                                             <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                                         </label>
                                     )}
                                 </div>
-                                <p className="text-xs text-muted-foreground text-center">
-                                    Foto ini akan ditampilkan di samping teks program kerja.
-                                </p>
+                                <div className="flex gap-2 p-3 bg-orange-50/50 rounded-lg border border-orange-100 text-[11px] text-muted-foreground leading-relaxed">
+                                    <Info className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                    <span>Foto ini akan ditampilkan di halaman Program Kerja untuk memperjelas visual kegiatan.</span>
+                                </div>
                             </div>
 
                             <div className="lg:col-span-2 space-y-4">
-                                <Label htmlFor="work_program" className="flex items-center gap-2 font-semibold">
-                                    <ClipboardList className="w-4 h-4"/> Isi Program Kerja
+                                <Label htmlFor="work_program" className="flex items-center gap-2 font-semibold text-orange-700">
+                                    <ClipboardList className="w-5 h-5"/> Isi Program Kerja <span className="text-red-500">*</span>
                                 </Label>
                                 <Textarea
                                     id="work_program"
@@ -183,7 +210,7 @@ export function ProgramForm({ initialData, entityType, onClose }: ProgramFormPro
                                     required
                                 />
                                 <div className="text-xs text-muted-foreground bg-blue-50 text-blue-700 p-3 rounded-md border border-blue-100">
-                                    <strong>Tips:</strong> Gunakan "Enter" untuk membuat paragraf baru atau memisahkan poin-poin kegiatan.
+                                    <strong>💡 Tips:</strong> Gunakan "Enter" untuk membuat paragraf baru. Anda bisa menggunakan simbol seperti (•) atau (-) untuk membuat daftar list manual agar lebih rapi.
                                 </div>
                             </div>
 

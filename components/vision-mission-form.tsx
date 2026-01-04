@@ -39,11 +39,30 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
 
+    const handleCleanupStorage = async (url: string) => {
+        if (!url) return
+        try {
+            const filenameWithExt = url.split("/").pop() || ""
+            const baseName = filenameWithExt.replace(/_(xs|sm|md|lg|xl|2xl|fhd|thumb|avatar|original|blur)\./, ".")
+            const parts = baseName.split('.')
+            const ext = parts.pop()
+            const nameNoExt = parts.join('.')
+
+            const variants = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'fhd', 'thumb', 'avatar', 'original', 'blur']
+
+            await Promise.all(variants.map(v =>
+                storageApi.delete(`uploads/${nameNoExt}_${v}.${ext}`).catch(() => null)
+            ))
+        } catch (err) {
+            console.error("Cleanup failed", err)
+        }
+    }
+
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
 
-        const errorCheck = validateFile(file, "Image", 2)
+        const errorCheck = validateFile(file, "Image", 5)
         if (errorCheck) {
             setError(errorCheck.message)
             return
@@ -61,15 +80,21 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
 
         try {
             let finalImageUrl = formData.vision_mission_image_url
+            const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
 
             if (selectedFile) {
-                const uploaded = await storageApi.upload(selectedFile)
-                finalImageUrl = uploaded.url
+                const uploadResult = await storageApi.upload(selectedFile)
+                const variants = uploadResult.variants
 
-                if (initialData?.vision_mission_image_url && initialData.vision_mission_image_url !== finalImageUrl) {
-                    const key = initialData.vision_mission_image_url.split("/").pop()
-                    if (key) await storageApi.delete(`uploads/${key}`)
+                const selectedPath = variants.lg || variants.md || variants.fhd || Object.values(variants)[0] as string
+                const cleanPath = selectedPath.startsWith("/") ? selectedPath.substring(1) : selectedPath
+                const newImageUrl = `${baseUrl}${cleanPath}`
+
+                if (initialData?.vision_mission_image_url && initialData.vision_mission_image_url !== newImageUrl) {
+                    await handleCleanupStorage(initialData.vision_mission_image_url)
                 }
+
+                finalImageUrl = newImageUrl
             }
 
             const payload = {
@@ -94,7 +119,6 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
 
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-
             <div className="flex items-center justify-between">
                 <Button
                     variant="ghost"
@@ -107,13 +131,11 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
             </div>
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-
                 <div className="bg-muted/30 border-b p-6">
                     <div className="flex items-start gap-4">
                         <div className="p-2.5 rounded-lg border shadow-sm bg-blue-50 text-blue-600 border-blue-100">
                             <EditIcon className="w-5 h-5"/>
                         </div>
-
                         <div>
                             <h2 className="text-xl font-bold text-foreground leading-tight">
                                 Edit Visi & Misi
@@ -134,7 +156,6 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                         )}
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
                             <div className="lg:col-span-1 space-y-4">
                                 <Label className="flex items-center gap-2 font-semibold">
                                     <ImageIcon className="w-4 h-4"/> Foto Pendukung
@@ -163,7 +184,7 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                                                 <UploadCloud className="w-8 h-8" />
                                             </div>
                                             <p className="text-sm font-medium">Klik untuk upload foto</p>
-                                            <p className="text-xs text-muted-foreground mt-1 text-center">Format: JPG, PNG<br/>(Max 2MB)</p>
+                                            <p className="text-xs text-muted-foreground mt-1 text-center">Format: JPG, PNG<br/>(Max 5MB)</p>
                                             <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                                         </label>
                                     )}
@@ -174,7 +195,6 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                             </div>
 
                             <div className="lg:col-span-2 space-y-6">
-
                                 <div className="space-y-3">
                                     <Label htmlFor="vision" className="flex items-center gap-2 font-semibold text-base text-orange-700">
                                         <Target className="w-5 h-5"/> Visi
@@ -205,9 +225,7 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                                         <strong>Tips:</strong> Gunakan "Enter" untuk membuat paragraf baru atau memisahkan poin-poin visi & misi.
                                     </div>
                                 </div>
-
                             </div>
-
                         </div>
 
                         <div className="flex items-center justify-end gap-3 pt-6 pb-6 mt-8 border-t">

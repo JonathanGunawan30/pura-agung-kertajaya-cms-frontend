@@ -81,7 +81,7 @@ export function AboutSectionList() {
     router.push(`?type=${type}`, { scroll: false })
   }
 
-  const handleDelete = async (id: string, imageUrl: string) => {
+  const handleDelete = async (id: string, images: any) => {
     const result = await showConfirmAlert(
         "Hapus Bagian About",
         "Apakah Anda yakin? Data yang dihapus tidak dapat dikembalikan."
@@ -90,11 +90,16 @@ export function AboutSectionList() {
     if (!result.isConfirmed) return
 
     try {
-      if (imageUrl) {
-        const key = imageUrl.split("/").pop()
-        if (key) {
-          await storageApi.delete(`uploads/${key}`)
-        }
+      if (images && typeof images === 'object') {
+        const urls = Object.values(images) as string[]
+        await Promise.all(urls.map(async (url) => {
+          if (typeof url === 'string') {
+            const key = url.split("/").pop()
+            if (key) {
+              await storageApi.delete(`uploads/${key}`)
+            }
+          }
+        }))
       }
 
       await aboutApi.delete(id)
@@ -188,118 +193,127 @@ export function AboutSectionList() {
             </div>
         ) : (
             <div className="space-y-6">
-              {sections.map((section) => (
-                  <div
-                      key={section.id}
-                      className="group rounded-xl border bg-card shadow-sm overflow-hidden"
-                  >
-                    <div className="p-6 border-b bg-muted/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div>
-                        <h3 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-3">
-                          {section.title}
-                          <StatusBadge isActive={section.is_active} />
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> Informasi Utama Website
-                        </p>
+              {sections.map((section) => {
+                const images = section.images as any
+                const thumbnail = images?.lg || images?.md || images?.fhd || images?.original || Object.values(images)[0]
+                const fullImage = images?.["2xl"] || images?.fhd || images?.xl || images?.original || thumbnail
+                const blurImage = images?.blur
+
+                return (
+                    <div
+                        key={section.id}
+                        className="group rounded-xl border bg-card shadow-sm overflow-hidden"
+                    >
+                      <div className="p-6 border-b bg-muted/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                          <h3 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-3">
+                            {section.title}
+                            <StatusBadge isActive={section.is_active} />
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Informasi Utama Website
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 self-end sm:self-auto">
+                          <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingId(section.id)}
+                              className="h-9 border-border/50 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
+                          >
+                            <Edit2 className="w-4 h-4 mr-2" /> Edit
+                          </Button>
+                          <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(section.id, section.images)}
+                              className="h-9 border-border/50 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" /> Hapus
+                          </Button>
+                        </div>
                       </div>
 
-                      <div className="flex gap-2 self-end sm:self-auto">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingId(section.id)}
-                            className="h-9 border-border/50 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" /> Edit
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(section.id, section.image_url)}
-                            className="h-9 border-border/50 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" /> Hapus
-                        </Button>
-                      </div>
-                    </div>
+                      <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-8">
 
-                    <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-8">
-
-                      <div className="w-full lg:w-[350px] shrink-0 space-y-4">
-                        <div
-                            className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border shadow-sm cursor-zoom-in group/image bg-muted"
-                            onClick={() => {
-                              if (section.image_url) {
-                                setPreviewImage(section.image_url)
-                                setZoom(1)
-                              }
-                            }}
-                        >
-                          {section.image_url ? (
-                              <>
-                                <Image
-                                    src={section.image_url}
-                                    alt={section.title}
-                                    fill
-                                    sizes="(max-width: 768px) 100vw, 350px"
-                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                    priority
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
-                                  <div className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white">
-                                    <ZoomIn className="w-6 h-6" />
+                        <div className="w-full lg:w-[350px] shrink-0 space-y-4">
+                          <div
+                              className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border shadow-sm cursor-zoom-in group/image bg-muted"
+                              onClick={() => {
+                                if (fullImage) {
+                                  setPreviewImage(fullImage)
+                                  setZoom(1)
+                                }
+                              }}
+                          >
+                            {thumbnail ? (
+                                <>
+                                  <Image
+                                      src={thumbnail}
+                                      alt={section.title}
+                                      fill
+                                      sizes="(max-width: 768px) 100vw, 350px"
+                                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                      placeholder={blurImage ? "blur" : "empty"}
+                                      blurDataURL={blurImage}
+                                      priority
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
+                                    <div className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white">
+                                      <ZoomIn className="w-6 h-6" />
+                                    </div>
                                   </div>
+                                </>
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                  <ImageIcon className="w-16 h-16 opacity-20" />
                                 </div>
-                              </>
-                          ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                <ImageIcon className="w-16 h-16 opacity-20" />
+                            )}
+                          </div>
+                          <div className="text-xs text-center text-muted-foreground italic">
+                            Klik gambar untuk memperbesar
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="prose prose-sm md:prose-base max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {section.description}
+                          </div>
+
+                          {section.values && section.values.length > 0 && (
+                              <div className="mt-8 pt-6 border-t border-dashed">
+                                <h4 className="text-sm font-bold text-foreground flex items-center gap-2 uppercase tracking-wider mb-4">
+                                  <ListChecks className="w-4 h-4 text-orange-600" /> Nilai & Prinsip
+                                </h4>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {section.values.map((val) => (
+                                      <div
+                                          key={val.id}
+                                          className="flex gap-3 p-3 rounded-lg bg-muted/30 border hover:border-orange-200 transition-colors"
+                                      >
+                                        <div className="shrink-0 mt-0.5">
+                                          <CheckCircle2 className="w-5 h-5 text-orange-600" />
+                                        </div>
+                                        <div>
+                                          <p className="font-semibold text-foreground text-sm">
+                                            {val.title}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
+                                            {val.value}
+                                          </p>
+                                        </div>
+                                      </div>
+                                  ))}
+                                </div>
                               </div>
                           )}
                         </div>
-                        <div className="text-xs text-center text-muted-foreground italic">
-                          Klik gambar untuk memperbesar
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="prose prose-sm md:prose-base max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
-                          {section.description}
-                        </div>
-
-                        {section.values && section.values.length > 0 && (
-                            <div className="mt-8 pt-6 border-t border-dashed">
-                              <h4 className="text-sm font-bold text-foreground flex items-center gap-2 uppercase tracking-wider mb-4">
-                                <ListChecks className="w-4 h-4 text-orange-600" /> Nilai & Prinsip
-                              </h4>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {section.values.map((val) => (
-                                    <div
-                                        key={val.id}
-                                        className="flex gap-3 p-3 rounded-lg bg-muted/30 border hover:border-orange-200 transition-colors"
-                                    >
-                                      <div className="shrink-0 mt-0.5">
-                                        <CheckCircle2 className="w-5 h-5 text-orange-600" />
-                                      </div>
-                                      <div>
-                                        <p className="font-semibold text-foreground text-sm">
-                                          {val.title}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
-                                          {val.value}
-                                        </p>
-                                      </div>
-                                    </div>
-                                ))}
-                              </div>
-                            </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-              ))}
+                )
+              })}
             </div>
         )}
 

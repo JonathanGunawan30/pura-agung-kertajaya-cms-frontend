@@ -25,7 +25,7 @@ export interface Testimonial {
 export interface HeroSlide {
   id: string
   entity_type: EntityType
-  image_url: string
+  images: string[]
   order_index: number
   is_active: boolean
   created_at: number
@@ -37,7 +37,7 @@ export interface Gallery {
   entity_type: EntityType
   title: string
   description: string
-  image_url: string
+  images: string[]
   order_index: number
   is_active: boolean
   created_at: number
@@ -62,6 +62,7 @@ export interface Activity {
   title: string
   description: string
   time_info: string
+  event_date: string
   location: string
   order_index: number
   is_active: boolean
@@ -98,7 +99,7 @@ export interface AboutSection {
   entity_type: EntityType
   title: string
   description: string
-  image_url: string
+  images: string[]
   is_active: boolean
   created_at: number
   updated_at: number
@@ -112,7 +113,7 @@ export interface OrganizationMember {
   position: string
   position_order: number
   order_index: number
-  photo_url: string | null
+  images: string[]
   description: string | null
   is_active: boolean
   created_at: number
@@ -124,7 +125,7 @@ export interface Facility {
   entity_type: EntityType
   name: string
   description: string
-  image_url: string
+  images: string[]
   order_index: number
   is_active: boolean
   created_at: number
@@ -154,6 +155,33 @@ export interface OrganizationDetail {
   vision_mission_image_url: string | null
   work_program_image_url: string | null
   rules_image_url: string | null
+  structure_image_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Category {
+  id: string
+  name: string
+  slug: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Article {
+  id: string
+  category_id: string
+  category?: Category
+  title: string
+  slug: string
+  author_name: string
+  author_role: string
+  excerpt: string
+  content: string
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  is_featured: boolean
+  published_at: string | null
+  images: any
   created_at: string
   updated_at: string
 }

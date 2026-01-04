@@ -34,14 +34,13 @@ export function GalleryForm({ itemId, entityType, onClose }: GalleryFormProps) {
         entity_type: entityType,
         title: "",
         description: "",
-        image_url: "",
+        images: null as any,
         order_index: 1,
         is_active: true,
     })
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [previewUrl, setPreviewUrl] = useState<string>("")
-    const [oldImageUrl, setOldImageUrl] = useState("")
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -63,12 +62,18 @@ export function GalleryForm({ itemId, entityType, onClose }: GalleryFormProps) {
                         entity_type: data.entity_type,
                         title: data.title,
                         description: data.description,
-                        image_url: data.image_url,
+                        images: data.images,
                         order_index: data.order_index,
                         is_active: data.is_active,
                     })
-                    setOldImageUrl(data.image_url)
-                    setPreviewUrl(data.image_url)
+
+                    const imgs = data.images as any
+                    if (imgs) {
+                        const url = imgs.fhd || imgs["2xl"] || imgs.xl || imgs.lg || imgs.md || Object.values(imgs)[0]
+                        if (typeof url === 'string') {
+                            setPreviewUrl(url)
+                        }
+                    }
                 } catch (err) {
                     setError("Gagal memuat data galeri.")
                 }
@@ -96,7 +101,7 @@ export function GalleryForm({ itemId, entityType, onClose }: GalleryFormProps) {
         const file = e.target.files?.[0]
         if (!file) return
 
-        const fileError = validateFile(file, "Image", 2)
+        const fileError = validateFile(file, "Image", 10)
         if (fileError) {
             setError(fileError.message)
             return
@@ -116,21 +121,27 @@ export function GalleryForm({ itemId, entityType, onClose }: GalleryFormProps) {
         setLoading(true)
 
         try {
-            let uploadedUrl = formData.image_url
+            let finalImages = formData.images || {}
 
             if (selectedFile) {
-                const uploadResult = await storageApi.upload(selectedFile)
-                uploadedUrl = uploadResult.url
+                const uploadResponse = await storageApi.upload(selectedFile)
+                const backendVariants = uploadResponse.variants
 
-                if (isEditMode && oldImageUrl && oldImageUrl !== uploadedUrl) {
-                    const key = oldImageUrl.split("/").pop()
-                    if (key) await storageApi.delete(`uploads/${key}`)
-                }
+                const fullUrlImages: Record<string, string> = {}
+                const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
+
+                Object.keys(backendVariants).forEach((key) => {
+                    const path = backendVariants[key]
+                    const cleanPath = path.startsWith("/") ? path.substring(1) : path
+                    fullUrlImages[key] = `${baseUrl}${cleanPath}`
+                })
+
+                finalImages = fullUrlImages
             }
 
             const payload = {
                 ...formData,
-                image_url: uploadedUrl,
+                images: finalImages,
             }
 
             if (isEditMode) {
@@ -235,7 +246,7 @@ export function GalleryForm({ itemId, entityType, onClose }: GalleryFormProps) {
                                                     <UploadCloud className="w-8 h-8" />
                                                 </div>
                                                 <p className="text-sm font-medium text-foreground">Klik untuk upload foto</p>
-                                                <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 2MB)</p>
+                                                <p className="text-xs text-muted-foreground mt-1">Format: JPG, PNG (Max 10MB)</p>
                                                 <input
                                                     type="file"
                                                     accept="image/*"

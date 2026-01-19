@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import type { SiteIdentity, EntityType } from "@/lib/types"
 import { siteIdentityApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType } from "@/lib/role-utils"
 import { Button } from "@/components/ui/button"
 import {
     Edit2,
@@ -25,10 +27,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function SiteIdentityList() {
     const searchParams = useSearchParams()
+    const router = useRouter()
+    const { user } = useAuth()
+
     const queryType = searchParams.get("type") as EntityType | null
-    const entityType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
-        ? queryType
-        : "pura"
+    const validatedType = validateEntityType(user, queryType)
+
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
 
     const [data, setData] = useState<SiteIdentity | null>(null)
     const [loading, setLoading] = useState(true)
@@ -49,6 +54,14 @@ export function SiteIdentityList() {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
+        }
+    }, [queryType, user])
 
     useEffect(() => {
         fetchData()
@@ -180,7 +193,7 @@ export function SiteIdentityList() {
                                         <div className="text-sm">
                                             <span className="text-muted-foreground block text-xs">Link Tujuan:</span>
                                             <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded text-blue-600 flex items-center gap-1 w-fit mt-0.5">
-                                                <LinkIcon className="w-3 h-3"/> {data.primary_button_link}
+                                                <LinkIcon className="w-3 h-3" /> {data.primary_button_link}
                                             </span>
                                         </div>
                                     </div>
@@ -197,7 +210,7 @@ export function SiteIdentityList() {
                                         <div className="text-sm">
                                             <span className="text-muted-foreground block text-xs">Link Tujuan:</span>
                                             <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded text-blue-600 flex items-center gap-1 w-fit mt-0.5">
-                                                <LinkIcon className="w-3 h-3"/> {data.secondary_button_link}
+                                                <LinkIcon className="w-3 h-3" /> {data.secondary_button_link}
                                             </span>
                                         </div>
                                     </div>

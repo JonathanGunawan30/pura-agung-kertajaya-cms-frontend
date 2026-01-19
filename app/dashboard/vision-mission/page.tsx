@@ -1,5 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { VisionMissionList } from "@/components/vision-mission-list"
+import { ModuleAccessGuard } from "@/components/module-access-guard"
 import { EntityType } from "@/lib/types"
 
 const PAGE_CONFIG: Record<EntityType, { title: string; description: string; label: string }> = {
@@ -42,7 +43,9 @@ export default async function VisionMissionPage({ searchParams }: Props) {
                 title={config.title}
                 description={config.description}
             />
-            <VisionMissionList />
+            <ModuleAccessGuard moduleName="vision-mission" entityType={entityType}>
+                <VisionMissionList />
+            </ModuleAccessGuard>
         </div>
     )
 }

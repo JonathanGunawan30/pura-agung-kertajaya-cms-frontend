@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Remark, EntityType } from "@/lib/types"
 import { remarksApi, storageApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType, getAllowedEntityTypes, isSuperUser } from "@/lib/role-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -44,10 +46,12 @@ import { cn } from "@/lib/utils"
 export function RemarksList() {
     const searchParams = useSearchParams()
     const router = useRouter()
-    const queryType = searchParams.get("type") as EntityType | null
-    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) ? queryType : "pura"
+    const { user } = useAuth()
 
-    const [entityType, setEntityType] = useState<EntityType>(defaultType)
+    const queryType = searchParams.get("type") as EntityType | null
+    const validatedType = validateEntityType(user, queryType)
+
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
     const [remarks, setRemarks] = useState<Remark[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -58,6 +62,14 @@ export function RemarksList() {
     const [zoom, setZoom] = useState(1)
 
     const limit = 6
+
+    useEffect(() => {
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
+        }
+    }, [queryType, user])
 
     const fetchRemarks = async () => {
         try {
@@ -107,10 +119,19 @@ export function RemarksList() {
 
     return (
         <div className="space-y-6">
-            {!queryType && (
+            {!queryType && isSuperUser(user) && (
                 <div className="flex flex-wrap gap-2">
-                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
-                        <Button key={type} variant={entityType === type ? "default" : "outline"} onClick={() => { setEntityType(type); router.push(`?type=${type}`, { scroll: false }) }} className={cn("capitalize h-10 px-6", entityType === type ? "bg-orange-600 text-white shadow-md" : "hover:text-orange-600 border-dashed")}>
+                    {getAllowedEntityTypes(user).map((type) => (
+                        <Button
+                            key={type}
+                            variant={entityType === type ? "default" : "outline"}
+                            onClick={() => {
+                                const validType = validateEntityType(user, type)
+                                setEntityType(validType)
+                                router.push(`?type=${validType}`, { scroll: false })
+                            }}
+                            className={cn("capitalize h-10 px-6", entityType === type ? "bg-orange-600 text-white shadow-md" : "hover:text-orange-600 border-dashed")}
+                        >
                             <Building2 className="w-4 h-4 mr-2" /> {type}
                         </Button>
                     ))}

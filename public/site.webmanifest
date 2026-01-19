@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Pura Agung Kertajaya Admin",
+  "short_name": "Pura Admin",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

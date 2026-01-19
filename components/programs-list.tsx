@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import type { OrganizationDetail, EntityType } from "@/lib/types"
 import { programsApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType, getAllowedEntityTypes, isSuperUser } from "@/lib/role-utils"
 import { Button } from "@/components/ui/button"
 import {
     Edit2,
@@ -24,13 +26,12 @@ import { cn } from "@/lib/utils"
 export function ProgramsList() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { user } = useAuth()
 
     const queryType = searchParams.get("type") as EntityType | null
-    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
-        ? queryType
-        : "pura"
+    const validatedType = validateEntityType(user, queryType)
 
-    const [entityType, setEntityType] = useState<EntityType>(defaultType)
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
     const [data, setData] = useState<OrganizationDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
@@ -40,10 +41,12 @@ export function ProgramsList() {
     const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
     useEffect(() => {
-        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
-            setEntityType(queryType)
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
         }
-    }, [queryType])
+    }, [queryType, user])
 
     const fetchData = async () => {
         try {
@@ -62,8 +65,9 @@ export function ProgramsList() {
     }, [entityType])
 
     const handleTabChange = (type: EntityType) => {
-        setEntityType(type)
-        router.push(`?type=${type}`, { scroll: false })
+        const validType = validateEntityType(user, type)
+        setEntityType(validType)
+        router.push(`?type=${validType}`, { scroll: false })
     }
 
     const handleFormClose = () => {
@@ -77,9 +81,9 @@ export function ProgramsList() {
 
     return (
         <div className="space-y-6">
-            {!queryType && (
+            {!queryType && isSuperUser(user) && (
                 <div className="flex flex-wrap gap-2">
-                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                    {getAllowedEntityTypes(user).map((type) => (
                         <Button
                             key={type}
                             variant={entityType === type ? "default" : "outline"}
@@ -163,7 +167,6 @@ export function ProgramsList() {
                             )}
                         </div>
 
-                        {/* Bagian Konten */}
                         <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2 border-b pb-2">
                                 <ClipboardList className="w-5 h-5 text-orange-600" />

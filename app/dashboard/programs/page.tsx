@@ -1,5 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { ProgramsList } from "@/components/programs-list"
+import { ModuleAccessGuard } from "@/components/module-access-guard"
 import { EntityType } from "@/lib/types"
 
 const PAGE_CONFIG: Record<EntityType, { title: string; description: string; label: string }> = {
@@ -42,7 +43,9 @@ export default async function ProgramsPage({ searchParams }: Props) {
                 title={config.title}
                 description={config.description}
             />
-            <ProgramsList />
+            <ModuleAccessGuard moduleName="programs" entityType={entityType}>
+                <ProgramsList />
+            </ModuleAccessGuard>
         </div>
     )
 }

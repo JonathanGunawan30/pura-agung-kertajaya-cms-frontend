@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/app/auth-context"
+import { canAccessEntityType } from "@/lib/role-utils"
 import {
     LayoutDashboard,
     MessageSquare,
@@ -252,85 +253,95 @@ export function Sidebar() {
                         </Link>
 
                         <div className="space-y-4">
-                            {menuGroups.map((group) => {
-                                const isExpanded = activeGroupKey === group.key
-                                const GroupIcon = group.icon
+                            {menuGroups
+                                .filter((group) => {
+                                    if (group.key === "global") return true
 
-                                return (
-                                    <div
-                                        key={group.key}
-                                        className={cn(
-                                            "rounded-xl transition-all duration-300 border",
-                                            isExpanded
-                                                ? "bg-card border-border shadow-sm pb-2"
-                                                : "border-transparent hover:bg-muted/30"
-                                        )}
-                                    >
-                                        <button
-                                            onClick={() => toggleGroup(group.key)}
-                                            className={cn(
-                                                "w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-bold transition-colors group select-none",
-                                                isExpanded ? group.themeColor : "text-muted-foreground"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn(
-                                                    "p-1.5 rounded-md transition-colors",
-                                                    isExpanded ? `bg-current/10 ${group.themeColor}` : "bg-muted text-muted-foreground group-hover:bg-muted/80"
-                                                )}>
-                                                    {GroupIcon && <GroupIcon className="w-4 h-4" />}
-                                                </div>
-                                                <span>{group.title}</span>
-                                            </div>
-                                            <ChevronRight className={cn(
-                                                "w-4 h-4 transition-transform duration-200",
-                                                isExpanded ? "rotate-90" : "text-muted-foreground/50"
-                                            )} />
-                                        </button>
+                                    if (group.key === "pura" || group.key === "yayasan" || group.key === "pasraman") {
+                                        return canAccessEntityType(user, group.key as any)
+                                    }
 
+                                    return true
+                                })
+                                .map((group) => {
+                                    const isExpanded = activeGroupKey === group.key
+                                    const GroupIcon = group.icon
+
+                                    return (
                                         <div
+                                            key={group.key}
                                             className={cn(
-                                                "overflow-hidden transition-all duration-300 ease-in-out px-2",
-                                                isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+                                                "rounded-xl transition-all duration-300 border",
+                                                isExpanded
+                                                    ? "bg-card border-border shadow-sm pb-2"
+                                                    : "border-transparent hover:bg-muted/30"
                                             )}
                                         >
-                                            <div className="space-y-1 pt-1 ml-4 mb-2">
-                                                {group.items.map((item) => {
-                                                    const Icon = item.icon
-                                                    const active = isLinkActive(item)
-                                                    const fullHref = getHref(item)
+                                            <button
+                                                onClick={() => toggleGroup(group.key)}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-bold transition-colors group select-none",
+                                                    isExpanded ? group.themeColor : "text-muted-foreground"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                        "p-1.5 rounded-md transition-colors",
+                                                        isExpanded ? `bg-current/10 ${group.themeColor}` : "bg-muted text-muted-foreground group-hover:bg-muted/80"
+                                                    )}>
+                                                        {GroupIcon && <GroupIcon className="w-4 h-4" />}
+                                                    </div>
+                                                    <span>{group.title}</span>
+                                                </div>
+                                                <ChevronRight className={cn(
+                                                    "w-4 h-4 transition-transform duration-200",
+                                                    isExpanded ? "rotate-90" : "text-muted-foreground/50"
+                                                )} />
+                                            </button>
 
-                                                    return (
-                                                        <Link
-                                                            key={item.label + item.typeParam}
-                                                            href={fullHref}
-                                                            onClick={() => setIsOpen(false)}
-                                                            className={cn(
-                                                                "group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                                                                active
-                                                                    ? cn(group.activeBg, group.activeText)
-                                                                    : cn("text-muted-foreground", group.hoverClass)
-                                                            )}
-                                                        >
-                                                            {active ? (
-                                                                <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", group.dotClass)} />
-                                                            ) : (
-                                                                <Icon className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground/70 shrink-0" />
-                                                            )}
+                                            <div
+                                                className={cn(
+                                                    "overflow-hidden transition-all duration-300 ease-in-out px-2",
+                                                    isExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+                                                )}
+                                            >
+                                                <div className="space-y-1 pt-1 ml-4 mb-2">
+                                                    {group.items.map((item) => {
+                                                        const Icon = item.icon
+                                                        const active = isLinkActive(item)
+                                                        const fullHref = getHref(item)
 
-                                                            <span className={cn(
-                                                                active ? "translate-x-0 font-semibold" : "-translate-x-1 group-hover:translate-x-0 transition-transform"
-                                                            )}>
-                                                                {item.label}
-                                                            </span>
-                                                        </Link>
-                                                    )
-                                                })}
+                                                        return (
+                                                            <Link
+                                                                key={item.label + item.typeParam}
+                                                                href={fullHref}
+                                                                onClick={() => setIsOpen(false)}
+                                                                className={cn(
+                                                                    "group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                                                                    active
+                                                                        ? cn(group.activeBg, group.activeText)
+                                                                        : cn("text-muted-foreground", group.hoverClass)
+                                                                )}
+                                                            >
+                                                                {active ? (
+                                                                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", group.dotClass)} />
+                                                                ) : (
+                                                                    <Icon className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground/70 shrink-0" />
+                                                                )}
+
+                                                                <span className={cn(
+                                                                    active ? "translate-x-0 font-semibold" : "-translate-x-1 group-hover:translate-x-0 transition-transform"
+                                                                )}>
+                                                                    {item.label}
+                                                                </span>
+                                                            </Link>
+                                                        )
+                                                    })}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })}
                         </div>
 
                         <div className="mt-8 pt-4 border-t border-border px-1">

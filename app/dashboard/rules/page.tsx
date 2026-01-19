@@ -1,5 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { RulesList } from "@/components/rules-list"
+import { ModuleAccessGuard } from "@/components/module-access-guard"
 import { EntityType } from "@/lib/types"
 
 const PAGE_CONFIG: Record<EntityType, { title: string; description: string; label: string }> = {
@@ -24,7 +25,7 @@ type Props = {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function RulesPage({ searchParams }: Props){
+export default async function RulesPage({ searchParams }: Props) {
     const params = await searchParams
     const rawType = typeof params.type === 'string' ? params.type : 'pura'
 
@@ -44,7 +45,9 @@ export default async function RulesPage({ searchParams }: Props){
                 description={config.description}
             />
 
-            <RulesList />
+            <ModuleAccessGuard moduleName="rules" entityType={entityType}>
+                <RulesList />
+            </ModuleAccessGuard>
         </div>
     )
 }

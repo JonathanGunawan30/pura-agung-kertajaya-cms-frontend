@@ -1,12 +1,14 @@
 "use client"
 
-import {useState, useEffect} from "react"
-import {useSearchParams, useRouter} from "next/navigation"
+import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
-import type {Facility, EntityType} from "@/lib/types"
-import {facilitiesApi, storageApi} from "@/lib/api-client"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
+import type { Facility, EntityType } from "@/lib/types"
+import { facilitiesApi, storageApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType, getAllowedEntityTypes, isSuperUser } from "@/lib/role-utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
     Edit2,
     Trash2,
@@ -24,9 +26,9 @@ import {
     X,
     Building2,
 } from "lucide-react"
-import {FacilityForm} from "./facilities-form"
-import {showConfirmAlert, showSuccessAlert, showErrorAlert} from "@/lib/sweet-alert"
-import {Skeleton} from "@/components/ui/skeleton"
+import { FacilityForm } from "./facilities-form"
+import { showConfirmAlert, showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -44,13 +46,13 @@ import { cn } from "@/lib/utils"
 export function FacilitiesList() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { user } = useAuth()
 
     const queryType = searchParams.get("type") as EntityType | null
-    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
-        ? queryType
-        : "pura"
 
-    const [entityType, setEntityType] = useState<EntityType>(defaultType)
+    const validatedType = validateEntityType(user, queryType)
+
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
     const [facilities, setFacilities] = useState<Facility[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -65,10 +67,13 @@ export function FacilitiesList() {
     const limit = 6
 
     useEffect(() => {
-        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
-            setEntityType(queryType)
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
         }
-    }, [queryType])
+    }, [queryType, user])
 
     const fetchFacilities = async () => {
         try {
@@ -91,8 +96,9 @@ export function FacilitiesList() {
     }, [searchQuery, entityType])
 
     const handleTabChange = (type: EntityType) => {
-        setEntityType(type)
-        router.push(`?type=${type}`, { scroll: false })
+        const validType = validateEntityType(user, type)
+        setEntityType(validType)
+        router.push(`?type=${validType}`, { scroll: false })
     }
 
     const handleDelete = async (id: string, images: any) => {
@@ -142,15 +148,15 @@ export function FacilitiesList() {
     const totalPages = Math.ceil(filteredFacilities.length / limit)
 
     if (showForm || editingId) {
-        return <FacilityForm facilityId={editingId || undefined} entityType={entityType} onClose={handleFormClose}/>
+        return <FacilityForm facilityId={editingId || undefined} entityType={entityType} onClose={handleFormClose} />
     }
 
     return (
         <div className="space-y-6">
 
-            {!queryType && (
+            {!queryType && isSuperUser(user) && (
                 <div className="flex flex-wrap gap-2">
-                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                    {getAllowedEntityTypes(user).map((type) => (
                         <Button
                             key={type}
                             variant={entityType === type ? "default" : "outline"}
@@ -173,7 +179,7 @@ export function FacilitiesList() {
                 <div
                     className="p-5 bg-background/50 backdrop-blur-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
                     <div className="relative w-full sm:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder={`Cari fasilitas ${entityType}...`}
                             className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
@@ -186,7 +192,7 @@ export function FacilitiesList() {
                         onClick={() => setShowForm(true)}
                         className="w-full sm:w-auto h-10 bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm transition-all"
                     >
-                        <Plus className="w-5 h-5 mr-2"/> Tambah Fasilitas
+                        <Plus className="w-5 h-5 mr-2" /> Tambah Fasilitas
                     </Button>
                 </div>
             </div>
@@ -198,14 +204,14 @@ export function FacilitiesList() {
                             key={i}
                             className="rounded-xl border bg-card shadow-sm overflow-hidden h-[380px] flex flex-col"
                         >
-                            <Skeleton className="h-48 w-full bg-gray-200 dark:bg-gray-800"/>
+                            <Skeleton className="h-48 w-full bg-gray-200 dark:bg-gray-800" />
                             <div className="p-5 space-y-3 flex-1">
-                                <Skeleton className="h-5 w-3/4 bg-gray-200 dark:bg-gray-800"/>
-                                <Skeleton className="h-4 w-full bg-gray-200 dark:bg-gray-800"/>
+                                <Skeleton className="h-5 w-3/4 bg-gray-200 dark:bg-gray-800" />
+                                <Skeleton className="h-4 w-full bg-gray-200 dark:bg-gray-800" />
                             </div>
                             <div className="px-5 pb-5 pt-0 flex justify-between">
-                                <Skeleton className="h-6 w-20 bg-gray-200 dark:bg-gray-800"/>
-                                <Skeleton className="h-6 w-20 bg-gray-200 dark:bg-gray-800"/>
+                                <Skeleton className="h-6 w-20 bg-gray-200 dark:bg-gray-800" />
+                                <Skeleton className="h-6 w-20 bg-gray-200 dark:bg-gray-800" />
                             </div>
                         </div>
                     ))}
@@ -214,7 +220,7 @@ export function FacilitiesList() {
                 <div
                     className="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col items-center justify-center py-24 text-center">
                     <div className="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-full mb-4">
-                        <Search className="w-8 h-8 text-orange-600/50"/>
+                        <Search className="w-8 h-8 text-orange-600/50" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                     <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
@@ -260,14 +266,14 @@ export function FacilitiesList() {
                                                 className="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100 duration-300">
                                                 <div
                                                     className="bg-black/50 p-2 rounded-full backdrop-blur-sm text-white transform translate-y-2 group-hover/image:translate-y-0 transition-transform">
-                                                    <ZoomIn className="w-6 h-6"/>
+                                                    <ZoomIn className="w-6 h-6" />
                                                 </div>
                                             </div>
                                         </>
                                     ) : (
                                         <div
                                             className="w-full h-full flex items-center justify-center text-muted-foreground cursor-default">
-                                            <ImageIcon className="w-12 h-12 opacity-20"/>
+                                            <ImageIcon className="w-12 h-12 opacity-20" />
                                         </div>
                                     )}
                                 </div>
@@ -293,7 +299,7 @@ export function FacilitiesList() {
                                                     size="icon"
                                                     className="h-8 w-8 -mr-2 -mt-1 text-muted-foreground hover:text-orange-600"
                                                 >
-                                                    <MoreHorizontal className="h-4 w-4"/>
+                                                    <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-40">
@@ -301,13 +307,13 @@ export function FacilitiesList() {
                                                     onClick={() => setEditingId(facility.id)}
                                                     className="cursor-pointer"
                                                 >
-                                                    <Edit2 className="mr-2 h-3.5 w-3.5"/> Edit
+                                                    <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => handleDelete(facility.id, facility.images)}
                                                     className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50"
                                                 >
-                                                    <Trash2 className="mr-2 h-3.5 w-3.5"/> Hapus
+                                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -320,13 +326,13 @@ export function FacilitiesList() {
 
                                 <div className="px-5 py-3 border-t bg-muted/20 flex items-center justify-between">
                                     <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                        <LayoutList className="w-3.5 h-3.5"/>
+                                        <LayoutList className="w-3.5 h-3.5" />
                                         <span>
-                                        Urutan:{" "}
+                                            Urutan:{" "}
                                             <span className="text-foreground font-semibold">{facility.order_index}</span>
-                                    </span>
+                                        </span>
                                     </div>
-                                    <StatusBadge isActive={facility.is_active}/>
+                                    <StatusBadge isActive={facility.is_active} />
                                 </div>
                             </div>
                         )
@@ -368,7 +374,7 @@ export function FacilitiesList() {
                                 onClick={() => setZoom((z) => clamp(z - 0.25, 0.5, 4))}
                                 title="Zoom out"
                             >
-                                <ZoomOut className="h-4 w-4"/>
+                                <ZoomOut className="h-4 w-4" />
                             </Button>
 
                             <div className="text-xs font-medium text-white px-2 min-w-[3.5rem] text-center select-none">
@@ -383,10 +389,10 @@ export function FacilitiesList() {
                                 onClick={() => setZoom((z) => clamp(z + 0.25, 0.5, 4))}
                                 title="Zoom in"
                             >
-                                <ZoomIn className="h-4 w-4"/>
+                                <ZoomIn className="h-4 w-4" />
                             </Button>
 
-                            <div className="w-px h-6 bg-white/20 mx-1"/>
+                            <div className="w-px h-6 bg-white/20 mx-1" />
 
                             <Button
                                 type="button"
@@ -396,7 +402,7 @@ export function FacilitiesList() {
                                 onClick={() => setZoom(1)}
                                 title="Reset zoom"
                             >
-                                <RotateCcw className="h-4 w-4"/>
+                                <RotateCcw className="h-4 w-4" />
                             </Button>
 
                             <Button
@@ -407,10 +413,10 @@ export function FacilitiesList() {
                                 onClick={() => window.open(previewImage, "_blank")}
                                 title="Open in new tab"
                             >
-                                <ExternalLink className="h-4 w-4"/>
+                                <ExternalLink className="h-4 w-4" />
                             </Button>
 
-                            <div className="w-px h-6 bg-white/20 mx-1"/>
+                            <div className="w-px h-6 bg-white/20 mx-1" />
 
                             <Button
                                 type="button"
@@ -423,13 +429,13 @@ export function FacilitiesList() {
                                 }}
                                 title="Close (ESC)"
                             >
-                                <X className="h-4 w-4"/>
+                                <X className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
 
                     <div className="flex-1 overflow-auto flex items-center justify-center p-4 sm:p-8"
-                         onClick={() => setPreviewImage(null)}>
+                        onClick={() => setPreviewImage(null)}>
                         <img
                             src={previewImage}
                             alt="Preview"
@@ -461,7 +467,7 @@ export function FacilitiesList() {
     )
 }
 
-function StatusBadge({isActive}: { isActive: boolean }) {
+function StatusBadge({ isActive }: { isActive: boolean }) {
     return (
         <TooltipProvider>
             <Tooltip delayDuration={300}>
@@ -469,14 +475,13 @@ function StatusBadge({isActive}: { isActive: boolean }) {
                     <div
                         className={`
                               flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border cursor-help select-none
-                              ${
-                            isActive
+                              ${isActive
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
                                 : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"
-                        }
+                            }
                         `}
                     >
-                        {isActive ? <Eye className="w-3 h-3"/> : <EyeOff className="w-3 h-3"/>}
+                        {isActive ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                         {isActive ? "Active" : "Hidden"}
                     </div>
                 </TooltipTrigger>

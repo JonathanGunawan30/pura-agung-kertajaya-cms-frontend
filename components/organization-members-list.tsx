@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import type { OrganizationMember, EntityType } from "@/lib/types"
 import { organizationMembersApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType, getAllowedEntityTypes, isSuperUser } from "@/lib/role-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -46,13 +48,12 @@ import { cn } from "@/lib/utils"
 export function OrganizationMembersList() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { user } = useAuth()
 
     const queryType = searchParams.get("type") as EntityType | null
-    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
-        ? queryType
-        : "pura"
+    const validatedType = validateEntityType(user, queryType)
 
-    const [entityType, setEntityType] = useState<EntityType>(defaultType)
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
     const [members, setMembers] = useState<OrganizationMember[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -65,10 +66,12 @@ export function OrganizationMembersList() {
     const limit = 10
 
     useEffect(() => {
-        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
-            setEntityType(queryType)
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
         }
-    }, [queryType])
+    }, [queryType, user])
 
     const fetchMembers = async () => {
         try {
@@ -87,8 +90,9 @@ export function OrganizationMembersList() {
     }, [entityType])
 
     const handleTabChange = (type: EntityType) => {
-        setEntityType(type)
-        router.push(`?type=${type}`, { scroll: false })
+        const validType = validateEntityType(user, type)
+        setEntityType(validType)
+        router.push(`?type=${validType}`, { scroll: false })
         setSelectedPositions([])
         setPage(1)
     }
@@ -171,9 +175,9 @@ export function OrganizationMembersList() {
     return (
         <div className="space-y-6">
 
-            {!queryType && (
+            {!queryType && isSuperUser(user) && (
                 <div className="flex flex-wrap gap-2">
-                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                    {getAllowedEntityTypes(user).map((type) => (
                         <Button
                             key={type}
                             variant={entityType === type ? "default" : "outline"}
@@ -296,48 +300,48 @@ export function OrganizationMembersList() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
-                                <tr>
-                                    <th className="px-6 py-4 w-[60px] text-center">No</th>
-                                    <th className="px-6 py-4">Nama Anggota</th>
-                                    <th className="px-6 py-4">
-                                        <div className="flex items-center gap-1">
-                                            Jabatan
-                                            {selectedPositions.length > 0 && <Filter className="w-3 h-3 text-orange-600" />}
-                                        </div>
-                                    </th>
-                                    <th className="px-6 py-4 text-center">Level</th>
-                                    <th className="px-6 py-4 text-center">Urutan</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4 text-right">Aksi</th>
-                                </tr>
+                                    <tr>
+                                        <th className="px-6 py-4 w-[60px] text-center">No</th>
+                                        <th className="px-6 py-4">Nama Anggota</th>
+                                        <th className="px-6 py-4">
+                                            <div className="flex items-center gap-1">
+                                                Jabatan
+                                                {selectedPositions.length > 0 && <Filter className="w-3 h-3 text-orange-600" />}
+                                            </div>
+                                        </th>
+                                        <th className="px-6 py-4 text-center">Level</th>
+                                        <th className="px-6 py-4 text-center">Urutan</th>
+                                        <th className="px-6 py-4 text-center">Status</th>
+                                        <th className="px-6 py-4 text-right">Aksi</th>
+                                    </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
-                                {paginated.map((member, idx) => (
-                                    <tr key={member.id} className="hover:bg-muted/30 transition-colors">
-                                        <td className="px-6 py-4 text-center text-muted-foreground font-mono text-xs">
-                                            {startIdx + idx + 1}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 border border-orange-200 shrink-0">
-                                                    <User className="w-4 h-4" />
+                                    {paginated.map((member, idx) => (
+                                        <tr key={member.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-6 py-4 text-center text-muted-foreground font-mono text-xs">
+                                                {startIdx + idx + 1}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 border border-orange-200 shrink-0">
+                                                        <User className="w-4 h-4" />
+                                                    </div>
+                                                    <span className="font-medium text-foreground">{member.name}</span>
                                                 </div>
-                                                <span className="font-medium text-foreground">{member.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${selectedPositions.includes(member.position) ? "bg-orange-100 text-orange-800 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
                                                     {member.position}
                                                 </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center font-mono text-xs text-muted-foreground">{member.position_order}</td>
-                                        <td className="px-6 py-4 text-center font-mono text-xs text-muted-foreground">{member.order_index}</td>
-                                        <td className="px-6 py-4 text-center"><StatusBadge isActive={member.is_active} /></td>
-                                        <td className="px-6 py-4 text-right">
-                                            <ActionMenu onEdit={() => setEditingId(member.id)} onDelete={() => handleDelete(member.id)} />
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-mono text-xs text-muted-foreground">{member.position_order}</td>
+                                            <td className="px-6 py-4 text-center font-mono text-xs text-muted-foreground">{member.order_index}</td>
+                                            <td className="px-6 py-4 text-center"><StatusBadge isActive={member.is_active} /></td>
+                                            <td className="px-6 py-4 text-right">
+                                                <ActionMenu onEdit={() => setEditingId(member.id)} onDelete={() => handleDelete(member.id)} />
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>

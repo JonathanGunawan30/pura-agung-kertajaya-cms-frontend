@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import type { Activity, EntityType } from "@/lib/types"
 import { activitiesApi } from "@/lib/api-client"
+import { useAuth } from "@/app/auth-context"
+import { validateEntityType, getAllowedEntityTypes, isSuperUser } from "@/lib/role-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -40,13 +42,12 @@ import { cn } from "@/lib/utils"
 export function ActivitiesList() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { user } = useAuth()
 
     const queryType = searchParams.get("type") as EntityType | null
-    const defaultType: EntityType = (queryType && ["pura", "yayasan", "pasraman"].includes(queryType))
-        ? queryType
-        : "pura"
+    const validatedType = validateEntityType(user, queryType)
 
-    const [entityType, setEntityType] = useState<EntityType>(defaultType)
+    const [entityType, setEntityType] = useState<EntityType>(validatedType)
     const [activities, setActivities] = useState<Activity[]>([])
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -57,10 +58,12 @@ export function ActivitiesList() {
     const limit = 5
 
     useEffect(() => {
-        if (queryType && ["pura", "yayasan", "pasraman"].includes(queryType)) {
-            setEntityType(queryType)
+        const validType = validateEntityType(user, queryType)
+        setEntityType(validType)
+        if (queryType && validType !== queryType) {
+            router.replace(`?type=${validType}`, { scroll: false })
         }
-    }, [queryType])
+    }, [queryType, user])
 
     const fetchActivities = async () => {
         try {
@@ -83,8 +86,9 @@ export function ActivitiesList() {
     }, [searchQuery, entityType])
 
     const handleTabChange = (type: EntityType) => {
-        setEntityType(type)
-        router.push(`?type=${type}`, { scroll: false })
+        const validType = validateEntityType(user, type)
+        setEntityType(validType)
+        router.push(`?type=${validType}`, { scroll: false })
     }
 
     const handleDelete = async (id: string) => {
@@ -133,9 +137,9 @@ export function ActivitiesList() {
 
     return (
         <div className="space-y-6">
-            {!queryType && (
+            {!queryType && isSuperUser(user) && (
                 <div className="flex flex-wrap gap-2">
-                    {(["pura", "yayasan", "pasraman"] as EntityType[]).map((type) => (
+                    {getAllowedEntityTypes(user).map((type) => (
                         <Button
                             key={type}
                             variant={entityType === type ? "default" : "outline"}
@@ -333,8 +337,8 @@ function StatusBadge({ isActive, compact = false }: { isActive: boolean, compact
                             font-medium border cursor-help select-none
                             ${compact ? "px-2 py-0 text-[10px] h-5" : "px-3 py-1 text-xs"}
                             ${isActive
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
-                            : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"}
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
+                                : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"}
                         `}
                     >
                         {isActive ? "Active" : "Inactive"}

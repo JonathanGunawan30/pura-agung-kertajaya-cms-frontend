@@ -56,7 +56,7 @@ export function DashboardQuickLinks() {
 
     if (isSuperUser(user)) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                 <EntityQuickLinks entityType="pura" title="Pura Agung" colorClass="text-orange-600 bg-orange-50 border-orange-200" />
                 <EntityQuickLinks entityType="yayasan" title="Yayasan Vidya" colorClass="text-blue-600 bg-blue-50 border-blue-200" />
                 <EntityQuickLinks entityType="pasraman" title="Pasraman" colorClass="text-emerald-600 bg-emerald-50 border-emerald-200" />

@@ -335,6 +335,25 @@ export const storageApi = {
                 expiration ? `&expiration=${expiration}` : ""
             }`
         ),
+
+    uploadSingle: async (file: File): Promise<{filename: string; key: string; url: string}> => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch(`${API_BASE_URL}/api/storage/upload/single`,{
+            method: "POST",
+            credentials: "include",
+            body: formData
+        })
+
+        if (!response.ok){
+            const error = await response.json().catch(() => ({}))
+            throw new Error(error.errors || `Upload Single failed: ${response.status}`)
+        }
+
+        const data = await response.json()
+        return data.data
+    }
 }
 
 // category endpoint

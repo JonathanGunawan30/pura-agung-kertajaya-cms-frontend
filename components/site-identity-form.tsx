@@ -46,22 +46,15 @@ export function SiteIdentityForm({ initialData, entityType, onClose }: SiteIdent
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
 
-    const handleCleanupStorage = async (url: string) => {
-        if (!url) return
+    const handleCleanupStorage = async (fullUrl: string) => {
+        if (!fullUrl) return
         try {
-            const filenameWithExt = url.split("/").pop() || ""
-            const baseName = filenameWithExt.replace(/_(xs|sm|md|lg|xl|2xl|fhd|thumb|avatar|original|blur)\./, ".")
-            const parts = baseName.split('.')
-            const ext = parts.pop()
-            const nameNoExt = parts.join('.')
+            const urlObj = new URL(fullUrl)
+            const key = urlObj.pathname.substring(1)
 
-            const variants = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'fhd', 'thumb', 'avatar', 'original', 'blur']
-
-            await Promise.all(variants.map(v =>
-                storageApi.delete(`uploads/${nameNoExt}_${v}.${ext}`).catch(() => null)
-            ))
+            await storageApi.delete(key)
         } catch (err) {
-            console.error("Cleanup failed", err)
+            console.error("Cleanup failed for:", fullUrl, err)
         }
     }
 
@@ -82,7 +75,7 @@ export function SiteIdentityForm({ initialData, entityType, onClose }: SiteIdent
         const file = e.target.files?.[0]
         if (!file) return
 
-        const fileError = validateFile(file, "Logo", 2) // Max 2MB untuk logo biasanya cukup
+        const fileError = validateFile(file, "Logo", 2) // Max 2MB
         if (fileError) {
             setError(fileError.message)
             return
@@ -102,36 +95,21 @@ export function SiteIdentityForm({ initialData, entityType, onClose }: SiteIdent
 
         try {
             let finalLogoUrl = formData.logo_url
-            const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
+            const storageBaseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
 
             if (selectedFile) {
-                const uploadResult = await storageApi.upload(selectedFile)
+                const uploadResult = await storageApi.uploadSingle(selectedFile)
 
-                const variants = (uploadResult as any).images || (uploadResult as any).variants || {}
+                const newKey = (uploadResult as any).key || (uploadResult as any).filename
+                const newUrl = (uploadResult as any).url || `${storageBaseUrl}/${newKey}`
 
-                const selectedPath = variants["2xl"] ||
-                    variants.fhd ||
-                    variants.xl ||
-                    variants.lg ||
-                    variants.md ||
-                    variants.original ||
-                    Object.values(variants)[0] as string
+                if (!newUrl) throw new Error("Gagal mendapatkan URL gambar.")
 
-                if (!selectedPath) throw new Error("Gagal mendapatkan path gambar.")
-
-                let newLogoUrl = ""
-                if (selectedPath.startsWith("http")) {
-                    newLogoUrl = selectedPath
-                } else {
-                    const cleanPath = selectedPath.startsWith("/") ? selectedPath.substring(1) : selectedPath
-                    newLogoUrl = `${baseUrl}${cleanPath}`
-                }
-
-                if (initialData?.logo_url && initialData.logo_url !== newLogoUrl) {
+                if (initialData?.logo_url && initialData.logo_url !== newUrl) {
                     await handleCleanupStorage(initialData.logo_url)
                 }
 
-                finalLogoUrl = newLogoUrl
+                finalLogoUrl = newUrl
             }
 
             const payload = {

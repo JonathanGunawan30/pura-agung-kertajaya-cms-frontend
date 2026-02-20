@@ -19,6 +19,7 @@ import {
     Edit2 as EditIcon,
     ImageIcon,
     UploadCloud
+    // Trash2 dihapus dari import
 } from "lucide-react"
 
 interface VisionMissionFormProps {
@@ -47,9 +48,7 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
             const parts = baseName.split('.')
             const ext = parts.pop()
             const nameNoExt = parts.join('.')
-
             const variants = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', 'fhd', 'thumb', 'avatar', 'original', 'blur']
-
             await Promise.all(variants.map(v =>
                 storageApi.delete(`uploads/${nameNoExt}_${v}.${ext}`).catch(() => null)
             ))
@@ -70,6 +69,7 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
 
         setSelectedFile(file)
         setPreviewUrl(URL.createObjectURL(file))
+        setFormData(prev => ({ ...prev, vision_mission_image_url: "PENDING_UPLOAD" }))
         setError("")
     }
 
@@ -79,22 +79,20 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
         setLoading(true)
 
         try {
-            let finalImageUrl = formData.vision_mission_image_url
+            let finalImageUrl = initialData?.vision_mission_image_url || ""
             const baseUrl = process.env.NEXT_PUBLIC_STORAGE_BASE_URL || ""
 
             if (selectedFile) {
                 const uploadResult = await storageApi.upload(selectedFile)
                 const variants = uploadResult.variants
-
                 const selectedPath = variants.lg || variants.md || variants.fhd || Object.values(variants)[0] as string
                 const cleanPath = selectedPath.startsWith("/") ? selectedPath.substring(1) : selectedPath
-                const newImageUrl = `${baseUrl}${cleanPath}`
+                finalImageUrl = `${baseUrl}${cleanPath}`
 
-                if (initialData?.vision_mission_image_url && initialData.vision_mission_image_url !== newImageUrl) {
+                if (initialData?.vision_mission_image_url) {
+                    console.log("Menimpa gambar, menghapus yang lama:", initialData.vision_mission_image_url);
                     await handleCleanupStorage(initialData.vision_mission_image_url)
                 }
-
-                finalImageUrl = newImageUrl
             }
 
             const payload = {
@@ -102,11 +100,15 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                 vision: formData.vision,
                 mission: formData.mission,
                 vision_mission_image_url: finalImageUrl,
+                work_program: initialData?.work_program || "",
+                work_program_image_url: initialData?.work_program_image_url || "",
+                rules: initialData?.rules || "",
+                rules_image_url: initialData?.rules_image_url || "",
+                structure_image_url: initialData?.structure_image_url || ""
             }
 
             await visionMissionApi.update(entityType, payload)
             await showSuccessAlert("Berhasil!", "Visi & Misi berhasil diperbarui.")
-
             onClose()
         } catch (err) {
             const message = err instanceof Error ? err.message : "Gagal menyimpan data."
@@ -120,33 +122,13 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
     return (
         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between">
-                <Button
-                    variant="ghost"
-                    onClick={onClose}
-                    className="group pl-0 hover:bg-transparent text-muted-foreground hover:text-orange-600 transition-colors"
-                >
+                <Button variant="ghost" onClick={onClose} className="group pl-0 hover:bg-transparent text-muted-foreground hover:text-orange-600 transition-colors">
                     <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
                     Kembali ke Tampilan
                 </Button>
             </div>
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-                <div className="bg-muted/30 border-b p-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-2.5 rounded-lg border shadow-sm bg-blue-50 text-blue-600 border-blue-100">
-                            <EditIcon className="w-5 h-5"/>
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-foreground leading-tight">
-                                Edit Visi & Misi
-                            </h2>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Tentukan arah dan tujuan organisasi untuk <span className="capitalize font-bold text-orange-600">{entityType}</span>.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 <CardContent className="pt-8 px-6 md:px-8 bg-card">
                     <form onSubmit={handleSubmit} className="space-y-8">
                         {error && (
@@ -165,18 +147,15 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                                     {previewUrl ? (
                                         <div className="relative group">
                                             <div className="rounded-lg overflow-hidden border shadow-sm relative aspect-[4/3] w-full flex items-center justify-center bg-black/5">
-                                                <img
-                                                    src={previewUrl}
-                                                    alt="Preview"
-                                                    className="h-full w-full object-cover"
-                                                />
+                                                <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                                             </div>
-                                            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <label className="cursor-pointer bg-white/90 p-2 rounded-full shadow-md border hover:text-orange-600 transition-colors" title="Ganti Foto">
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <label className="cursor-pointer bg-white/90 p-2 rounded-full shadow-md border hover:text-blue-600 transition-colors inline-flex" title="Ganti Foto">
                                                     <EditIcon className="w-4 h-4" />
                                                     <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                                                 </label>
                                             </div>
+
                                         </div>
                                     ) : (
                                         <label className="flex flex-col items-center justify-center h-48 cursor-pointer">
@@ -208,7 +187,6 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                                         required
                                     />
                                 </div>
-
                                 <div className="space-y-3">
                                     <Label htmlFor="mission" className="flex items-center gap-2 font-semibold text-base text-blue-700">
                                         <Goal className="w-5 h-5"/> Misi
@@ -221,30 +199,14 @@ export function VisionMissionForm({ initialData, entityType, onClose }: VisionMi
                                         className="bg-background min-h-[200px] resize-y focus-visible:ring-orange-500 text-sm leading-relaxed"
                                         required
                                     />
-                                    <div className="text-xs text-muted-foreground bg-blue-50 text-blue-700 p-3 rounded-md border border-blue-100">
-                                        <strong>Tips:</strong> Gunakan "Enter" untuk membuat paragraf baru atau memisahkan poin-poin visi & misi.
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-3 pt-6 pb-6 mt-8 border-t">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                className="h-10 px-6"
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={loading}
-                                className="h-10 px-8 bg-orange-600 hover:bg-orange-700 text-white shadow-md transition-all"
-                            >
-                                {loading ? "Menyimpan..." : (
-                                    <><Save className="w-4 h-4 mr-2" /> Simpan Perubahan</>
-                                )}
+                            <Button type="button" variant="outline" onClick={onClose} className="h-10 px-6">Batal</Button>
+                            <Button type="submit" disabled={loading} className="h-10 px-8 bg-orange-600 hover:bg-orange-700 text-white shadow-md transition-all">
+                                {loading ? "Menyimpan..." : <><Save className="w-4 h-4 mr-2" /> Simpan Perubahan</>}
                             </Button>
                         </div>
                     </form>

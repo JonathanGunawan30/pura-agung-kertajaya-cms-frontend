@@ -10,9 +10,9 @@ export default function DashboardPage() {
 
     const entityType = getAllowedEntityTypes(user)[0]
     const entityNames = {
-        pura: 'Pura Agung',
-        yayasan: 'Yayasan Vidya',
-        pasraman: 'Pasraman'
+        pura: 'Pura Agung Kertajaya',
+        yayasan: 'Yayasan Vidya Kertajaya',
+        pasraman: 'Pasraman Nonformal Kertajaya'
     }
 
     const greeting = isSuperUser(user)
@@ -20,7 +20,7 @@ export default function DashboardPage() {
         : `Selamat Datang, Admin ${entityNames[entityType] || ''}!`
 
     const description = isSuperUser(user)
-        ? "Anda memiliki akses penuh ke semua modul dan entity type."
+        ? "Anda memiliki akses penuh ke semua modul."
         : `Kelola konten ${entityNames[entityType] || ''} dengan mudah.`
 
     return (

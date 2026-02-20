@@ -328,7 +328,7 @@ export function AboutSectionForm({ sectionId, entityType, onClose }: AboutSectio
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="description">Deskripsi Lengkap</Label>
+                                            <Label htmlFor="description">Deskripsi Lengkap<span className="text-red-500">*</span></Label>
                                             <Textarea
                                                 id="description"
                                                 value={formData.description}

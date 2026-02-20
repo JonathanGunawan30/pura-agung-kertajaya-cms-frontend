@@ -52,7 +52,10 @@ export function ActivitiesList() {
     const [loading, setLoading] = useState(true)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [showForm, setShowForm] = useState(false)
+
     const [searchQuery, setSearchQuery] = useState("")
+    const [filterMonth, setFilterMonth] = useState("")
+
     const [page, setPage] = useState(1)
 
     const limit = 5
@@ -83,7 +86,7 @@ export function ActivitiesList() {
 
     useEffect(() => {
         setPage(1)
-    }, [searchQuery, entityType])
+    }, [searchQuery, filterMonth, entityType])
 
     const handleTabChange = (type: EntityType) => {
         const validType = validateEntityType(user, type)
@@ -114,10 +117,19 @@ export function ActivitiesList() {
         fetchActivities()
     }
 
-    const filteredActivities = activities.filter((activity) =>
-        activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        activity.location?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredActivities = activities.filter((activity) => {
+        const matchesSearch =
+            activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            activity.location?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        let matchesMonth = true;
+        if (filterMonth) {
+            const activityDate = (activity as any).event_date || "";
+            matchesMonth = activityDate.startsWith(filterMonth);
+        }
+
+        return matchesSearch && matchesMonth;
+    })
 
     const startIdx = (page - 1) * limit
     const paginated = filteredActivities.slice(startIdx, startIdx + limit)
@@ -159,20 +171,32 @@ export function ActivitiesList() {
             )}
 
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-                <div className="p-5 border-b bg-background/50 backdrop-blur-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
-                    <div className="relative w-full sm:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder={`Cari kegiatan ${entityType}...`}
-                            className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                <div className="p-5 border-b bg-background/50 backdrop-blur-sm flex flex-col xl:flex-row justify-between gap-4 items-start xl:items-center">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+                        <div className="relative w-full sm:w-80">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder={`Cari kegiatan ${entityType}...`}
+                                className="pl-10 h-10 bg-background border-input focus-visible:ring-orange-500"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="relative w-full sm:w-48">
+                            <Input
+                                type="month"
+                                className="h-10 bg-background border-input focus-visible:ring-orange-500 cursor-pointer"
+                                value={filterMonth}
+                                onChange={(e) => setFilterMonth(e.target.value)}
+                                title="Filter berdasarkan bulan"
+                            />
+                        </div>
                     </div>
 
                     <Button
                         onClick={() => setShowForm(true)}
-                        className="w-full sm:w-auto h-10 bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm transition-all"
+                        className="w-full xl:w-auto h-10 bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm transition-all"
                     >
                         <Plus className="w-5 h-5 mr-2" /> Tambah Kegiatan
                     </Button>
@@ -208,7 +232,7 @@ export function ActivitiesList() {
                         </div>
                         <h3 className="text-lg font-semibold text-foreground">Tidak ditemukan</h3>
                         <p className="text-muted-foreground mt-1 max-w-xs mx-auto">
-                            Tidak ada kegiatan untuk <strong>{entityType}</strong> yang cocok dengan "{searchQuery}" atau belum ada data.
+                            Tidak ada kegiatan yang cocok dengan filter yang Anda pilih.
                         </p>
                     </div>
                 ) : (
@@ -337,8 +361,8 @@ function StatusBadge({ isActive, compact = false }: { isActive: boolean, compact
                             font-medium border cursor-help select-none
                             ${compact ? "px-2 py-0 text-[10px] h-5" : "px-3 py-1 text-xs"}
                             ${isActive
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
-                                : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"}
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
+                            : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400"}
                         `}
                     >
                         {isActive ? "Active" : "Inactive"}

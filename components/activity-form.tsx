@@ -206,7 +206,7 @@ export function ActivityForm({activityId, entityType, onClose}: ActivityFormProp
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="time" className="flex items-center gap-2">
-                                            <Clock className="w-3.5 h-3.5 text-muted-foreground"/> Waktu Pelaksanaan
+                                            <Clock className="w-3.5 h-3.5 text-muted-foreground"/> Waktu Pelaksanaan <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             id="time"
@@ -216,18 +216,17 @@ export function ActivityForm({activityId, entityType, onClose}: ActivityFormProp
                                             className="bg-background"
                                         />
                                         <div className="text-[11px] text-muted-foreground pt-1.5">
-                                            <p className="mb-1 font-medium text-foreground/80">Contoh format pengisian
-                                                (bebas):</p>
+                                            <p className="mb-1 font-medium text-foreground/80">Format pengisian waktu/durasi:</p>
                                             <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
-                                                <li>Setiap Minggu, 08:00 WIB</li>
-                                                <li>Sabtu, 27 Des 2025, 17:00 - 19:00 WIB</li>
-                                                <li>Setiap Hari</li>
+                                                <li>18:30 WIB s/d Selesai</li>
+                                                <li>09:00 - 12:00 WIB</li>
+                                                <li>Pagi - Sore Hari</li>
                                             </ul>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="location" className="flex items-center gap-2">
-                                            <MapPin className="w-3.5 h-3.5 text-muted-foreground"/> Lokasi
+                                            <MapPin className="w-3.5 h-3.5 text-muted-foreground"/> Lokasi <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             id="location"

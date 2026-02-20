@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent, type FormEvent } from "react"
+import React, { useState, useEffect, type ChangeEvent, type FormEvent } from "react"
 import { articlesApi, categoriesApi, storageApi } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -246,7 +246,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                         <LayoutList className="w-4 h-4"/> Pengaturan
                                     </h3>
                                     <div className="space-y-2">
-                                        <Label>Kategori</Label>
+                                        <Label>Kategori<span className="text-red-500">*</span></Label>
                                         <Select
                                             key={`cat-${formData.category_id}`}
                                             value={formData.category_id}
@@ -262,7 +262,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Status Publikasi</Label>
+                                        <Label>Status Publikasi<span className="text-red-500">*</span></Label>
                                         <Select
                                             value={formData.status}
                                             onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
@@ -278,7 +278,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Tanggal Publish</Label>
+                                        <Label>Tanggal Publish<span className="text-red-500">*</span></Label>
                                         <Input
                                             type="datetime-local"
                                             value={formData.published_at}
@@ -322,7 +322,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Nama Penulis</Label>
+                                            <Label>Nama Penulis<span className="text-red-500">*</span></Label>
                                             <div className="relative">
                                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                 <Input
@@ -334,7 +334,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Jabatan Penulis</Label>
+                                            <Label>Jabatan Penulis<span className="text-red-500">*</span></Label>
                                             <Input
                                                 value={formData.author_role}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, author_role: e.target.value }))}
@@ -345,7 +345,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Ringkasan Singkat (Excerpt)</Label>
+                                        <Label>Ringkasan Singkat (Excerpt)<span className="text-red-500">*</span></Label>
                                         <Textarea
                                             value={formData.excerpt}
                                             onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
@@ -355,7 +355,7 @@ export function ArticlesForm({ articleId, onClose }: ArticleFormProps) {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Isi Konten Lengkap</Label>
+                                        <Label>Isi Konten Lengkap<span className="text-red-500">*</span></Label>
                                         <RichTextEditor
                                             value={formData.content}
                                             onChange={(html) => setFormData(prev => ({ ...prev, content: html }))}

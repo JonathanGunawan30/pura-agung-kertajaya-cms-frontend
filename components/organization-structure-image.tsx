@@ -20,15 +20,16 @@ import { CardContent } from "@/components/ui/card"
 import { validateFile } from "@/lib/validation"
 import { organizationImageApi, storageApi } from "@/lib/api-client"
 import { showSuccessAlert, showErrorAlert } from "@/lib/sweet-alert"
-import type { EntityType } from "@/lib/types"
+import type { EntityType, OrganizationDetail } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 interface OrganizationStructureImageProps {
     entityType: EntityType
     initialImageUrl: string | null
+    initialData: OrganizationDetail | null
 }
 
-export function OrganizationStructureImage({ entityType, initialImageUrl }: OrganizationStructureImageProps) {
+export function OrganizationStructureImage({ entityType, initialImageUrl, initialData }: OrganizationStructureImageProps) {
     const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl)
     const [isUploading, setIsUploading] = useState(false)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -121,9 +122,19 @@ export function OrganizationStructureImage({ entityType, initialImageUrl }: Orga
                 await handleCleanupStorage(imageUrl)
             }
 
-            await organizationImageApi.update(entityType, {
-                structure_image_url: newFullUrl
-            })
+            const payload = {
+                entity_type: entityType,
+                structure_image_url: newFullUrl,
+                vision: initialData?.vision || "",
+                mission: initialData?.mission || "",
+                vision_mission_image_url: initialData?.vision_mission_image_url || "",
+                work_program: initialData?.work_program || "",
+                work_program_image_url: initialData?.work_program_image_url || "",
+                rules: initialData?.rules || "",
+                rules_image_url: initialData?.rules_image_url || ""
+            }
+
+            await organizationImageApi.update(entityType, payload)
 
             setImageUrl(newFullUrl)
             await showSuccessAlert("Berhasil!", "Gambar struktur organisasi berhasil diperbarui.")

@@ -77,6 +77,7 @@ export default function OrganizationPage() {
                     key={orgDetail?.structure_image_url || 'empty'}
                     entityType={entityType}
                     initialImageUrl={orgDetail?.structure_image_url || null}
+                    initialData={orgDetail}
                 />
             )}
         </div>
